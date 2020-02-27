@@ -11,5 +11,6 @@ import blake3  # noqa: E261
 
 hasher = blake3.blake3()
 hasher.update(b"hello world")
+assert hasher.digest() == blake3.blake3(b"hello world").digest()
 print(hasher.digest())
 print(hasher.hexdigest())

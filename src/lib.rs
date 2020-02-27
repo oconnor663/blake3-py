@@ -13,8 +13,8 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
 
     #[pymethods]
     impl Blake3Hasher {
-        fn update(&mut self, input: &[u8]) {
-            self.hasher.update(input);
+        fn update(&mut self, data: &[u8]) {
+            self.hasher.update(data);
         }
 
         fn digest<'p>(&self, py: Python<'p>) -> &'p PyBytes {
@@ -26,11 +26,13 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         }
     }
 
-    #[pyfunction]
-    fn blake3() -> Blake3Hasher {
-        Blake3Hasher {
+    #[pyfunction(data="&[][..]")]
+    fn blake3(data: &[u8]) -> Blake3Hasher {
+        let mut hasher = Blake3Hasher {
             hasher: blake3::Hasher::new()
-        }
+        };
+        hasher.update(data);
+        hasher
     }
 
     m.add_wrapped(wrap_pyfunction!(blake3))?;
