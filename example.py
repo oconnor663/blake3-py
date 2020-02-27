@@ -9,4 +9,7 @@ subprocess.run(["cargo", "build", "--release"], check=True, cwd=HERE)
 
 import blake3  # noqa: E261
 
-print(blake3.blake3())
+hasher = blake3.blake3()
+hasher.update(b"hello world")
+print(hasher.digest())
+print(hasher.hexdigest())
