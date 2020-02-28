@@ -9,11 +9,11 @@ import shutil
 import subprocess
 import sys
 
-HERE = path.dirname(__file__)
+HERE = path.dirname(__file__) or "."
 
 subprocess.run(["cargo", "build", "--release"], check=True, cwd=HERE)
 
-if sys.platform.startswith("win32"):
+if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
     source_prefix = ""
     source_extension = "dll"
     destination_extension = "pyd"
