@@ -13,22 +13,15 @@ HERE = path.dirname(__file__) or "."
 
 subprocess.run(["cargo", "build", "--release"], check=True, cwd=HERE)
 
-if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
-    source_prefix = ""
-    source_extension = "dll"
-    destination_extension = "pyd"
-elif sys.platform.startswith("darwin"):
-    source_prefix = "lib"
-    source_extension = "dylib"
-    destination_extension = "so"
-else:
-    if not sys.platform.startswith("linux"):
-        print("Unknown platform, assuming Linux-like *.so filenames.")
-    source_prefix = "lib"
-    source_extension = "so"
-    destination_extension = "so"
+SRC_DEST = [
+    ["libblake3.so", "blake3.so"],
+    ["libblake3.dylib", "blake3.so"],
+    ["blake3.dll", "blake3.pyd"],
+]
 
-source_filename = source_prefix + "blake3." + source_extension
-source = path.join(HERE, "target", "release", source_filename)
-destination = path.join(HERE, "blake3." + destination_extension)
-shutil.copy2(source, destination)
+for (src, dest) in SRC_DEST:
+    source_path = path.join(HERE, "target", "release", src)
+    destination_path = path.join(HERE, dest)
+    if path.exists(source_path):
+        print("copying", source_path, "to", destination_path)
+        shutil.copy2(source_path, destination_path)
