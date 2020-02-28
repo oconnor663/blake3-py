@@ -1,14 +1,7 @@
 #! /usr/bin/env python3
 
-from os import path
-import subprocess
-
-HERE = path.dirname(__file__)
-
-subprocess.run(["cargo", "build", "--release"], check=True, cwd=HERE)
-
-# This works because ./blake3.so is a symlink to ./target/release/libblake3.so.
-import blake3  # noqa: E261
+# Run ./build.py first, which puts the blake3 shared library in this directory.
+import blake3
 
 hello_hash = "d74981efa70a0c880b8d8c1985d075dbcbf679b99a5f9914e5aaf96b831a9e24"
 
@@ -25,6 +18,7 @@ hasher.update(memoryview(b"world"))
 assert hasher.hexdigest() == hello_hash
 assert hasher.digest().hex() == hello_hash
 
+print("test incorrect argument type")
 try:
     blake3.blake3("a string")
 except TypeError:

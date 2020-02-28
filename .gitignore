@@ -1,2 +1,4 @@
 Cargo.lock
 target
+blake3.so
+blake3.pyd

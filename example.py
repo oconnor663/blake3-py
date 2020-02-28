@@ -1,17 +1,8 @@
 #! /usr/bin/env python3
 
+# Run ./build.py first, which puts the blake3 shared library in this directory.
+import blake3
 import sys
-from os import path
-import subprocess
-
-HERE = path.dirname(__file__)
-
-subprocess.run(["cargo", "build", "--release", "--quiet"],
-               check=True,
-               cwd=HERE)
-
-# This works because ./blake3.so is a symlink to ./target/release/libblake3.so.
-import blake3  # noqa: E261
 
 # The is a file, if a command line argument is provided, or otherwise stdin.
 if len(sys.argv) > 1:
