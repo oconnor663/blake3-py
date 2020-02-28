@@ -2,6 +2,11 @@
 
 # Run ./build.py first, which puts the blake3 shared library in this directory.
 import blake3
+from os import path
+import subprocess
+import sys
+
+HERE = path.dirname(__file__) or "."
 
 hello_hash = "d74981efa70a0c880b8d8c1985d075dbcbf679b99a5f9914e5aaf96b831a9e24"
 
@@ -25,3 +30,11 @@ except TypeError:
     pass
 else:
     assert False, "expected a type error"
+
+print("test example.py")
+output = subprocess.run(
+    [sys.executable, path.join(HERE, "example.py")],
+    check=True,
+    input=b"hello world",
+    stdout=subprocess.PIPE).stdout.decode().strip()
+assert output == hello_hash
