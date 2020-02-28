@@ -4,7 +4,8 @@ A python wrapper around the Rust
 [`blake3`](https://crates.io/crates/blake3) crate, based on
 [PyO3](https://github.com/PyO3/pyo3). This is a minimal proof of
 concept, currently Linux-only. I'm going to have to get more familiar
-with Python packaging to make this production-ready.
+with Python packaging to make this production-ready. See also the
+[Soundness](#soundness) concerns below.
 
 # Example
 
