@@ -1,4 +1,4 @@
-# blake3-py
+# blake3-py [![Actions Status](https://github.com/oconnor663/blake3-py/workflows/tests/badge.svg)](https://github.com/oconnor663/blake3-py/actions)
 
 A python wrapper around the Rust
 [`blake3`](https://crates.io/crates/blake3) crate, based on
