@@ -4,7 +4,8 @@
 import blake3
 import sys
 
-# The is a file, if a command line argument is provided, or otherwise stdin.
+# Open the input file, if a command line argument is provided. Otherwise read
+# from stdin.
 if len(sys.argv) > 1:
     assert len(sys.argv) == 2
     input_file = open(sys.argv[1], "rb")
