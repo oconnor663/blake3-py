@@ -9,6 +9,22 @@ with Python packaging to make this production-ready. See also the
 
 # Example
 
+How to try out this repo on the command line:
+
+```bash
+# You have to build the shared library first.
+$ ./build.py
+
+# Try out example.py.
+$ echo hello world | ./example.py
+dc5a4edb8240b018124052c330270696f96771a63b45250a5c17d3000e823355
+
+# Run a few tests.
+$ ./test.py
+```
+
+What it looks like to use `blake3` in Python code:
+
 ```python
 import blake3
 
@@ -28,23 +44,16 @@ print("The hash of 'hello world' is:",
 
 # Building
 
-This works best on Linux. First, run `cargo build --release`. Then
-rename the file `./target/release/libblake3.so` to `blake3.so` and put
-it somewhere where Python can import it. The easiest thing is to have it
-in the same directory as your script. Note that `./blake3.so` in this
-repo is a symlink to `./target/release/libblake3.so`, to make the
-`example.py` and `test.py` scripts work.
+The `build.py` script runs `cargo build --release` and then copies the
+resulting shared library to a platform-appropriate name (`blake3.so` on
+Linux/macOS, and `blake3.pyd` on Windows) in the repo root directory.
+Python scripts in that directory will then load the shared library when
+they `import blake3`.
 
-In theory this should be able to support macOS and Windows without too
-much work. The [PyO3
-docs](https://github.com/PyO3/pyo3#using-rust-from-python) mention that
-macOS will require some extra linker flags, and I haven't tested it. I
-have gotten Windows to work, though the automatic build code in
-`example.py` and `test.py` doesn't currently do the right thing, and you
-have to manually copy the `.dll` to `blake3.pyd`. Note that you're
-likely to run into [issue #712](https://github.com/PyO3/pyo3/issues/712)
-on Window, if you have 64-bit Rust and 32-bit Python installed (both of
-which are the default).
+This project is not yet packaged in a way that's convenient to `pip
+install`. I need to learn more about Python packaging to understand the
+right way to do this. (Binary wheels?) Any help on this front from folks
+with more experience would be greatly appreciated.
 
 # Soundness
 
