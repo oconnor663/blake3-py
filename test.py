@@ -24,3 +24,10 @@ hasher.update(bytearray(b" "))
 hasher.update(memoryview(b"world"))
 assert hasher.hexdigest() == hello_hash
 assert hasher.digest().hex() == hello_hash
+
+try:
+    blake3.blake3("a string")
+except TypeError:
+    pass
+else:
+    assert False, "expected a type error"
