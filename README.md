@@ -1,4 +1,4 @@
-# blake3-py [![Actions Status](https://github.com/oconnor663/blake3-py/workflows/tests/badge.svg)](https://github.com/oconnor663/blake3-py/actions)
+# blake3-py [![Actions Status](https://github.com/oconnor663/blake3-py/workflows/tests/badge.svg)](https://github.com/oconnor663/blake3-py/actions) [![PyPI version](https://badge.fury.io/py/blake3.svg)](https://pypi.python.org/pypi/blake3)
 
 Python bindings for the Rust [`blake3`](https://crates.io/crates/blake3)
 crate, based on [PyO3](https://github.com/PyO3/pyo3). This a proof of
