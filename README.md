@@ -51,7 +51,9 @@ There may be a binary wheel
 which case installation will be quick and you don't need to have Rust
 installed. If a wheel isn't available for your system, you'll need the
 **nightly** Rust toolchain installed to compile things locally. (PyO3
-currently requires nightly.)
+currently requires nightly. The
+[maturin](https://github.com/PyO3/maturin) build tool, which is invoked
+automatically by `pip install`, might install nightly Rust for you.)
 
 As usual with Pip, you might need to use `sudo` or the `--user` flag
 with the command above, depending on how Python is installed.
