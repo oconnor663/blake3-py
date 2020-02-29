@@ -4,16 +4,16 @@ on: [push, pull_request]
 
 jobs:
   tests:
-    name: ${{ matrix.target.name }}
+    name: Python ${{ matrix.python-version }} (${{ matrix.target.python-architecture }}) on ${{ matrix.target.os }}
     runs-on: ${{ matrix.target.os }}
     strategy:
       matrix:
         python-version: [3.5, 3.6, 3.7, 3.8]
         target: [
-          { "os": "ubuntu-latest",  "architecture": "x64", "name": "Linux 64-bit" },
-          { "os": "macOS-latest",   "architecture": "x64", "name": "macOS 64-bit" },
-          { "os": "windows-latest", "architecture": "x64", "name": "Windows 64-bit" },
-          { "os": "windows-latest", "architecture": "x86", "name": "Windows 32-bit" },
+          { "os": "ubuntu-latest",  "python-architecture": "x64", rust-toolchain: "nightly" },
+          { "os": "macOS-latest",   "python-architecture": "x64", rust-toolchain: "nightly" },
+          { "os": "windows-latest", "python-architecture": "x64", rust-toolchain: "nightly-x86_64-pc-windows-msvc" },
+          { "os": "windows-latest", "python-architecture": "x86", rust-toolchain: "nightly-i686-pc-windows-msvc" },
         ]
       fail-fast: false
     steps:
@@ -22,7 +22,13 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.target.architecture }}
+          architecture: ${{ matrix.target.python-architecture }}
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.target.rust-toolchain }}
+          profile: minimal
+          override: true
       - name: build.py
         run: python build.py
       - name: test.py
