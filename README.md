@@ -49,11 +49,12 @@ pip install blake3
 There may be a binary wheel
 [available](https://pypi.org/project/blake3/#files) for your system, in
 which case installation will be quick and you don't need to have Rust
-installed. If a wheel isn't available for your system, you will need
-Rust installed to compile things locally.
+installed. If a wheel isn't available for your system, you'll need the
+**nightly** Rust toolchain installed to compile things locally. (PyO3
+currently requires nightly.)
 
-As usual with Pip, you might need to use `sudo` or the `--user` flag,
-depending on how Python is installed.
+As usual with Pip, you might need to use `sudo` or the `--user` flag
+with the command above, depending on how Python is installed.
 
 # Soundness
 
