@@ -7,22 +7,6 @@ concept, not yet fully-featured or production-ready. See also the
 
 # Example
 
-How to try out this repo on the command line:
-
-```bash
-# You have to build the shared library first.
-$ ./build.py
-
-# Try out example.py.
-$ echo hello world | ./example.py
-dc5a4edb8240b018124052c330270696f96771a63b45250a5c17d3000e823355
-
-# Run a few tests.
-$ ./test.py
-```
-
-What it looks like to use `blake3` in Python code:
-
 ```python
 import blake3
 
@@ -40,18 +24,36 @@ print("The hash of 'hello world' is:",
       blake3.blake3(b"hello world").hexdigest())
 ```
 
-# Building
+If you've cloned the [GitHub
+project](https://github.com/oconnor663/blake3-py), and you want to
+experiment with the scripts there, they work like this:
 
-The `build.py` script runs `cargo build --release` and then copies the
-resulting shared library to a platform-appropriate name (`blake3.so` on
-Linux/macOS, and `blake3.pyd` on Windows) in the repo root directory.
-Python scripts in that directory will then load the shared library when
-they `import blake3`.
+```bash
+# Build the shared library first.
+$ ./build.py
 
-This project is not yet packaged in a way that's convenient to `pip
-install`. I need to learn more about Python packaging to understand the
-right way to do this. (Binary wheels?) Any help on this front from folks
-with more experience would be greatly appreciated.
+# Hash some input.
+$ echo hello world | ./example.py
+dc5a4edb8240b018124052c330270696f96771a63b45250a5c17d3000e823355
+
+# Run the tests.
+$ ./test.py
+```
+
+# Installation
+
+```
+pip install blake3
+```
+
+There may be a binary wheel
+[available](https://pypi.org/project/blake3/#files) for your system, in
+which case installation will be quick and you don't need to have Rust
+installed. If a wheel isn't available for your system, you will need
+Rust installed to compile things locally.
+
+As usual with Pip, you might need to use `sudo` or the `--user` flag,
+depending on how Python is installed.
 
 # Soundness
 
