@@ -4,12 +4,17 @@ on: [push, pull_request]
 
 jobs:
   tests:
-    name: ${{ matrix.os }}, Python ${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.target.name }}
+    runs-on: ${{ matrix.target.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: [3.5, 3.6, 3.7, 3.8]
+        target: [
+          { "os": "ubuntu-latest",  "architecture": "x64", "name": "Linux 64-bit" },
+          { "os": "macOS-latest",   "architecture": "x64", "name": "macOS 64-bit" },
+          { "os": "windows-latest", "architecture": "x64", "name": "Windows 64-bit" },
+          { "os": "windows-latest", "architecture": "x86", "name": "Windows 32-bit" },
+        ]
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
@@ -17,6 +22,7 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.target.architecture }}
       - name: build.py
         run: python build.py
       - name: test.py
