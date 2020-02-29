@@ -66,3 +66,15 @@ hashing, while the Rust code is treating it as a `&[u8]`. That violates
 Rust's aliasing guarantees and is technically unsound. However, no
 Python hashing implementation that I'm aware of holds the GIL while it
 calls into native code. I'm in need of some expert opinions on this.
+
+# Features
+
+Currently only basic hashing is supported, with the default 32-byte
+output size. Missing BLAKE3 features should be easy to add, though I'm
+not sure exactly what the API should look like. Missing features
+include:
+
+- variable-length output
+- an incremental output reader
+- the keyed hashing mode
+- the key derivation mode
