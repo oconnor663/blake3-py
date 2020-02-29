@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   tests:
-    name: Python ${{ matrix.python-version }} (${{ matrix.target.python-architecture }}) on ${{ matrix.target.os }}
+    name: python${{ matrix.python-version }}-${{ matrix.target.python-architecture }} ${{ matrix.target.os }}
     runs-on: ${{ matrix.target.os }}
     strategy:
       matrix:
