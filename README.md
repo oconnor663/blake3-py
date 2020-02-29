@@ -1,11 +1,10 @@
 # blake3-py [![Actions Status](https://github.com/oconnor663/blake3-py/workflows/tests/badge.svg)](https://github.com/oconnor663/blake3-py/actions)
 
-A python wrapper around the Rust
+A Python wrapper around the Rust
 [`blake3`](https://crates.io/crates/blake3) crate, based on
-[PyO3](https://github.com/PyO3/pyo3). This is a minimal proof of
-concept, currently Linux-only. I'm going to have to get more familiar
-with Python packaging to make this production-ready. See also the
-[Soundness](#soundness) concerns below.
+[PyO3](https://github.com/PyO3/pyo3). This a proof of concept, not yet
+fully-featured or production-ready. See also the [Soundness](#soundness)
+concerns below.
 
 # Example
 
@@ -78,3 +77,4 @@ include:
 - an incremental output reader
 - the keyed hashing mode
 - the key derivation mode
+- optional multi-threading
