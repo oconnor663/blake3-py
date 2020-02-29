@@ -14,10 +14,3 @@ c = ["blake3/c"]
 [dependencies]
 blake3 = "0.2.2"
 pyo3 = { version = "0.9.0-alpha.1", features = ["extension-module"] }
-
-# See the PyO3 docs.
-[target.x86_64-apple-darwin]
-rustflags = [
-  "-C", "link-arg=-undefined",
-  "-C", "link-arg=dynamic_lookup",
-]
