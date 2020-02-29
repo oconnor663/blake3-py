@@ -1,10 +1,9 @@
 # blake3-py [![Actions Status](https://github.com/oconnor663/blake3-py/workflows/tests/badge.svg)](https://github.com/oconnor663/blake3-py/actions)
 
-A Python wrapper around the Rust
-[`blake3`](https://crates.io/crates/blake3) crate, based on
-[PyO3](https://github.com/PyO3/pyo3). This a proof of concept, not yet
-fully-featured or production-ready. See also the [Soundness](#soundness)
-concerns below.
+Python bindings for the Rust [`blake3`](https://crates.io/crates/blake3)
+crate, based on [PyO3](https://github.com/PyO3/pyo3). This a proof of
+concept, not yet fully-featured or production-ready. See also the
+[Soundness](#soundness) concerns below.
 
 # Example
 
@@ -56,15 +55,15 @@ with more experience would be greatly appreciated.
 
 # Soundness
 
-There are some fundamental questions about whether this wrapper can be
+There are some fundamental questions about whether these bindings can be
 sound. Like the Python standard library's hash implementations, in order
 to avoid blocking other threads during a potentially expensive call to
-`update()`, this wrapper releases the GIL. But that opens up the
-possibility that another thread might mutate, say, the `bytearray` we're
-hashing, while the Rust code is treating it as a `&[u8]`. That violates
-Rust's aliasing guarantees and is technically unsound. However, no
-Python hashing implementation that I'm aware of holds the GIL while it
-calls into native code. I'm in need of some expert opinions on this.
+`update()`, we release the GIL. But that opens up the possibility that
+another thread might mutate, say, the `bytearray` we're hashing, while
+the Rust code is treating it as a `&[u8]`. That violates Rust's aliasing
+guarantees and is technically unsound. However, no Python hashing
+implementation that I'm aware of holds the GIL while it calls into
+native code. I need to get some expert opinions on this.
 
 # Features
 
