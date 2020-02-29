@@ -1,0 +1,80 @@
+name: wheels
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  wheel:
+    name: python${{ matrix.python-version }}-${{ matrix.target.python-architecture }} ${{ matrix.target.os }}
+    runs-on: ${{ matrix.target.os }}
+    strategy:
+      matrix:
+        python-version: [3.5, 3.6, 3.7, 3.8]
+        target: [
+          { "os": "ubuntu-latest",  "python-architecture": "x64", rust-toolchain: "nightly" },
+          { "os": "macOS-latest",   "python-architecture": "x64", rust-toolchain: "nightly" },
+          { "os": "windows-latest", "python-architecture": "x64", rust-toolchain: "nightly-x86_64-pc-windows-msvc" },
+          { "os": "windows-latest", "python-architecture": "x86", rust-toolchain: "nightly-i686-pc-windows-msvc" },
+        ]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.target.python-architecture }}
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.target.rust-toolchain }}
+          profile: minimal
+          override: true
+      - name: install maturin
+        run: pip install maturin
+      - name: build wheel
+        id: build_wheel
+        run: python .github/workflows/maturin_build_wheel.py
+      - name: install PyGithub
+        run: pip install PyGithub
+      - name: upload wheel
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TAG: ${{ github.ref }}
+        run: python .github/workflows/upload_asset.py ${{ steps.build_wheel.outputs.wheel_path }}
+
+  # The sdist could be built automatically by each of the wheel jobs above (if
+  # we didn't set the --no-sdist flag), but we give it its own job here to
+  # avoid having different platforms race to upload it. The platform shouldn't
+  # matter for generating the sdist, but in case it ever does, it would be
+  # better to be consistent.
+  sdist:
+    name: sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+          architecture: x64
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          override: true
+      - name: install maturin
+        run: pip install maturin
+      - name: build sdist
+        id: build_sdist
+        run: python .github/workflows/maturin_build_sdist.py
+      - name: install PyGithub
+        run: pip install PyGithub
+      - name: upload sdist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TAG: ${{ github.ref }}
+        run: python .github/workflows/upload_asset.py ${{ steps.build_sdist.outputs.sdist_path }}
