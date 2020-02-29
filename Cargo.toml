@@ -7,6 +7,10 @@
 name = "blake3"
 version = "0.1.0"
 authors = ["Jack O'Connor <oconnor663@gmail.com>"]
+description = "Python bindings for the Rust blake3 crate"
+repository = "https://github.com/oconnor663/blake3-py"
+license = "CC0-1.0 OR Apache-2.0"
+readme = "README.md"
 edition = "2018"
 
 [lib]
