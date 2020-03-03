@@ -4,6 +4,8 @@ import github
 import os
 import sys
 
+RETRIES = 10
+
 g = github.Github(os.environ["GITHUB_TOKEN"])
 tag_name = os.environ["GITHUB_TAG"]
 tag_prefix = "refs/tags/"
@@ -39,6 +41,14 @@ else:
     raise RuntimeError("no release for tag " + repr(tag_name))
 
 print("Uploading " + repr(asset_path) + "...")
-release.upload_asset(asset_path)
+for i in range(RETRIES):
+    try:
+        release.upload_asset(asset_path)
+        break
+    except Exception as e:
+        print("Upload attempt #{} failed:".format(i))
+        print(e)
+else:
+    raise RuntimeError("All upload attempts failed.")
 
 print("Success!")
