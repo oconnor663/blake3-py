@@ -36,14 +36,14 @@ jobs:
         run: pip install maturin
       - name: build wheel
         id: build_wheel
-        run: python .github/workflows/maturin_build_wheel.py
+        run: python -u .github/workflows/maturin_build_wheel.py
       - name: install PyGithub
         run: pip install PyGithub
       - name: upload release asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TAG: ${{ github.ref }}
-        run: python .github/workflows/upload_github_release_asset.py ${{ steps.build_wheel.outputs.wheel_path }}
+        run: python -u .github/workflows/upload_github_release_asset.py ${{ steps.build_wheel.outputs.wheel_path }}
 
   # The sdist could be built automatically by each of the wheel jobs above (if
   # we didn't set the --no-sdist flag), but we give it its own job here to
@@ -64,14 +64,14 @@ jobs:
         run: pip install maturin
       - name: build sdist
         id: build_sdist
-        run: python .github/workflows/maturin_build_sdist.py
+        run: python -u .github/workflows/maturin_build_sdist.py
       - name: install PyGithub
         run: pip install PyGithub
       - name: upload release asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TAG: ${{ github.ref }}
-        run: python .github/workflows/upload_github_release_asset.py ${{ steps.build_sdist.outputs.sdist_path }}
+        run: python -u .github/workflows/upload_github_release_asset.py ${{ steps.build_sdist.outputs.sdist_path }}
 
   pypi:
     name: pypi
@@ -95,4 +95,4 @@ jobs:
           GITHUB_TAG: ${{ github.ref }}
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: python .github/workflows/twine_upload.py
+        run: python -u .github/workflows/twine_upload.py

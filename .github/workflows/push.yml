@@ -34,6 +34,6 @@ jobs:
           profile: minimal
           override: true
       - name: build.py
-        run: python build.py
+        run: python -u build.py
       - name: test.py
-        run: python test.py
+        run: python -u test.py
