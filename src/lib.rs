@@ -51,6 +51,9 @@ fn hash_bytes_using_buffer_api(
     Ok(())
 }
 
+/// Python bindings for the Rust `blake3` crate. This module provides a single
+/// function, also called `blake3.` This interface is similar to `hashlib` from
+/// the standard library.
 #[pymodule]
 fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     // The hasher wrapper type is private. Similar to other types in hashlib,
@@ -62,19 +65,32 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
 
     #[pymethods]
     impl Blake3Hasher {
+        /// Add input bytes to the hasher. You can call this any number of
+        /// times.
         fn update(&mut self, py: Python, data: &PyAny) -> PyResult<()> {
             hash_bytes_using_buffer_api(py, &mut self.hasher, data)
         }
 
+        /// Finalize the hasher and return the resulting hash as bytes. This
+        /// does not modify the hasher, and calling it twice will give the same
+        /// result. You can also add more input and finalize again.
         fn digest<'p>(&self, py: Python<'p>) -> &'p PyBytes {
             PyBytes::new(py, self.hasher.finalize().as_bytes())
         }
 
+        /// Finalize the hasher and return the resulting hash as a hexadecimal
+        /// string. This does not modify the hasher, and calling it twice will
+        /// give the same result. You can also add more input and finalize
+        /// again.
         fn hexdigest<'p>(&self, py: Python<'p>) -> &'p PyString {
             PyString::new(py, &self.hasher.finalize().to_hex())
         }
     }
 
+    /// Construct an incremental hasher object, which can accept any number of
+    /// writes. This interface is similar to `hashlib.blake2b` or `hashlib.md5`
+    /// from the standard library. The optional `data` argument also accepts
+    /// bytes to hash, equivalent to a call to `update`.
     #[pyfunction(data = "None")]
     fn blake3(py: Python, data: Option<&PyAny>) -> PyResult<Blake3Hasher> {
         let mut pyhasher = Blake3Hasher {
