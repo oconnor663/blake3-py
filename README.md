@@ -46,17 +46,18 @@ $ ./test.py
 pip install blake3
 ```
 
-There may be a binary wheel
-[available](https://pypi.org/project/blake3/#files) for your system, in
-which case installation will be quick and you don't need to have Rust
-installed. If a wheel isn't available for your system, you'll need the
-**nightly** Rust toolchain installed to compile things locally. (PyO3
-currently requires nightly. The
-[maturin](https://github.com/PyO3/maturin) build tool, which is invoked
-automatically by `pip install`, might install nightly Rust for you.)
-
 As usual with Pip, you might need to use `sudo` or the `--user` flag
-with the command above, depending on how Python is installed.
+with the command above, depending on how you installed Python on your
+system.
+
+There are binary wheels [available on
+PyPI](https://pypi.org/project/blake3/#files) for most environments, so
+most users do not need a Rust toolchain. If you're building the source
+distribution, or if a binary wheel isn't available for your environment,
+you will need the **nightly** Rust toolchain (required by PyO3). This
+project includes a `rust-toolchain` file, so
+[rustup](https://rustup.rs/) will install and invoke the nightly
+toolchain automatically.
 
 # Soundness
 
