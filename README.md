@@ -8,11 +8,11 @@ concept, not yet fully-featured or production-ready. See also the
 # Example
 
 ```python
-import blake3
+from blake3 import blake3
 
-hash1 = blake3.blake3(b"foobarbaz").digest()
+hash1 = blake3(b"foobarbaz").digest()
 
-hasher = blake3.blake3()
+hasher = blake3()
 hasher.update(b"foo")
 hasher.update(b"bar")
 hasher.update(b"baz")
@@ -20,8 +20,7 @@ hash2 = hasher.digest()
 
 assert hash1 == hash2
 
-print("The hash of 'hello world' is:",
-      blake3.blake3(b"hello world").hexdigest())
+print("The hash of 'hello world' is:", blake3(b"hello world").hexdigest())
 ```
 
 If you've cloned the [GitHub
