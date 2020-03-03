@@ -11,9 +11,7 @@ shutil.copy2(ROOT / "Cargo.toml", ROOT / "Cargo.toml.orig")
 
 subprocess.run(["maturin", "sdist"])
 
-sdists = [
-    x for x in (ROOT / "target" / "wheels").iterdir()
-]
+sdists = [x for x in (ROOT / "target" / "wheels").iterdir()]
 if len(sdists) != 1:
     raise RuntimeError("expected one sdist, found " + repr(sdists))
 

@@ -12,9 +12,7 @@ ROOT = Path(__file__).parent.parent.parent
 subprocess.run(
     ["maturin", "build", "--no-sdist", "--interpreter", sys.executable])
 
-wheels = [
-    x for x in (ROOT / "target" / "wheels").iterdir()
-]
+wheels = [x for x in (ROOT / "target" / "wheels").iterdir()]
 if len(wheels) != 1:
     raise RuntimeError("expected one wheel, found " + repr(wheels))
 

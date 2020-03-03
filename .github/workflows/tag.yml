@@ -78,3 +78,25 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TAG: ${{ github.ref }}
         run: python .github/workflows/upload_github_release_asset.py ${{ steps.build_sdist.outputs.sdist_path }}
+
+  pypi:
+    name: pypi
+    needs:
+      - wheel
+      - sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+          architecture: x64
+      - name: install twine
+        run: pip install twine
+      - name: twine upload
+        env:
+          GITHUB_TAG: ${{ github.ref }}
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: python .github/workflows/twine_upload.py
