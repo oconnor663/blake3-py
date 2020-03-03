@@ -10,7 +10,7 @@ ROOT = Path(__file__).parent.parent.parent
 # for the run that this CI is explicitly testing. Also, don't build the sdist;
 # we'll do that in a separate job.
 subprocess.run(
-    ["maturin", "build", "--no-sdist", "--interpreter", sys.executable])
+    ["maturin", "build", "--release", "--no-sdist", "--interpreter", sys.executable])
 
 wheels = [x for x in (ROOT / "target" / "wheels").iterdir()]
 if len(wheels) != 1:
