@@ -43,7 +43,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TAG: ${{ github.ref }}
-        run: python .github/workflows/upload_asset.py ${{ steps.build_wheel.outputs.wheel_path }}
+        run: python .github/workflows/upload_github_release_asset.py ${{ steps.build_wheel.outputs.wheel_path }}
 
   # The sdist could be built automatically by each of the wheel jobs above (if
   # we didn't set the --no-sdist flag), but we give it its own job here to
@@ -77,4 +77,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TAG: ${{ github.ref }}
-        run: python .github/workflows/upload_asset.py ${{ steps.build_sdist.outputs.sdist_path }}
+        run: python .github/workflows/upload_github_release_asset.py ${{ steps.build_sdist.outputs.sdist_path }}
