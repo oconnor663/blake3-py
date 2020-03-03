@@ -39,7 +39,7 @@ jobs:
         run: python .github/workflows/maturin_build_wheel.py
       - name: install PyGithub
         run: pip install PyGithub
-      - name: upload wheel
+      - name: upload release asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TAG: ${{ github.ref }}
@@ -67,7 +67,7 @@ jobs:
         run: python .github/workflows/maturin_build_sdist.py
       - name: install PyGithub
         run: pip install PyGithub
-      - name: upload sdist
+      - name: upload release asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TAG: ${{ github.ref }}
