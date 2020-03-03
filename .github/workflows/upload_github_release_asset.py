@@ -46,7 +46,7 @@ for i in range(RETRIES):
         release.upload_asset(asset_path)
         break
     except Exception as e:
-        print("Upload attempt #{} failed:".format(i))
+        print("Upload attempt #{} failed:".format(i + 1))
         print(e)
 else:
     raise RuntimeError("All upload attempts failed.")
