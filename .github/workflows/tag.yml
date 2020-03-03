@@ -86,6 +86,8 @@ jobs:
         with:
           python-version: 3.8
           architecture: x64
+      - name: install PyGithub
+        run: pip install PyGithub
       - name: install twine
         run: pip install twine
       - name: twine upload
