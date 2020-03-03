@@ -60,12 +60,6 @@ jobs:
         with:
           python-version: 3.8
           architecture: x64
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          override: true
       - name: install maturin
         run: pip install maturin
       - name: build sdist
