@@ -58,12 +58,12 @@ fn hash_bytes_using_buffer_api(
     Ok(())
 }
 
-fn output_bytes(rust_hasher: &blake3::Hasher, len: u64, seek: u64) -> PyResult<Vec<u8>> {
-    if len > isize::max_value() as u64 {
+fn output_bytes(rust_hasher: &blake3::Hasher, length: u64, seek: u64) -> PyResult<Vec<u8>> {
+    if length > isize::max_value() as u64 {
         return Err(ValueError::py_err("length overflows isize"));
     }
     let mut reader = rust_hasher.finalize_xof();
-    let mut output = vec![0; len as usize];
+    let mut output = vec![0; length as usize];
     reader.set_position(seek);
     reader.fill(&mut output);
     Ok(output)
@@ -115,20 +115,20 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         /// result. You can also add more input and finalize again.
         ///
         /// Keyword arguments:
-        /// - `len`: The number of bytes in the final hash. BLAKE3 supports any
-        ///   output length up to 2**64-1. Note that shorter outputs are
+        /// - `length`: The number of bytes in the final hash. BLAKE3 supports
+        ///   any output length up to 2**64-1. Note that shorter outputs are
         ///   prefixes of longer ones. Defaults to 32.
         /// - `seek`: The starting byte position in the output stream. Defaults
         ///   to 0.
         fn digest<'p>(
             &self,
             py: Python<'p>,
-            len: Option<u64>,
+            length: Option<u64>,
             seek: Option<u64>,
         ) -> PyResult<&'p PyBytes> {
             let bytes = output_bytes(
                 &self.rust_hasher,
-                len.unwrap_or(blake3::KEY_LEN as u64),
+                length.unwrap_or(blake3::KEY_LEN as u64),
                 seek.unwrap_or(0),
             )?;
             Ok(PyBytes::new(py, &bytes))
@@ -140,7 +140,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         /// again.
         ///
         /// Keyword arguments:
-        /// - `len`: The number of bytes in the final hash, prior to hex
+        /// - `length`: The number of bytes in the final hash, prior to hex
         ///   encoding. BLAKE3 supports any output length up to 2**64-1. Note
         ///   that shorter outputs are prefixes of longer ones. Defaults to 32.
         /// - `seek`: The starting byte position in the output stream, prior to
@@ -148,12 +148,12 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         fn hexdigest<'p>(
             &self,
             py: Python<'p>,
-            len: Option<u64>,
+            length: Option<u64>,
             seek: Option<u64>,
         ) -> PyResult<&'p PyString> {
             let bytes = output_bytes(
                 &self.rust_hasher,
-                len.unwrap_or(blake3::KEY_LEN as u64),
+                length.unwrap_or(blake3::KEY_LEN as u64),
                 seek.unwrap_or(0),
             )?;
             let hex = hex::encode(&bytes);

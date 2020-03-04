@@ -43,9 +43,9 @@ key_material = b"some super secret key material"
 derived_key = blake3(key_material, context=example_context)
 
 # Extendable output. The default OUT_LEN is 32 bytes.
-extended = blake3(b"foo").digest(len=100)
+extended = blake3(b"foo").digest(length=100)
 assert extended[:OUT_LEN] == blake3(b"foo").digest()
-assert extended[75:100] == blake3(b"foo").digest(len=25, seek=75)
+assert extended[75:100] == blake3(b"foo").digest(length=25, seek=75)
 
 # Hash a large input with multithreading. Note that this can be slower
 # for short inputs, and you should benchmark it for your use case on

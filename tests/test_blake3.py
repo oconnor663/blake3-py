@@ -43,9 +43,9 @@ def test_vectors():
         # default hash
         assert hash_bytes == blake3(input_bytes).digest()
         assert extended_hash_bytes == blake3(input_bytes).digest(
-            len=extended_len)
+            length=extended_len)
         assert extended_hash_hex == blake3(input_bytes).hexdigest(
-            len=extended_len)
+            length=extended_len)
         incremental_hash = blake3()
         incremental_hash.update(input_bytes[:input_len // 2])
         incremental_hash.update(input_bytes[input_len // 2:])
@@ -55,9 +55,9 @@ def test_vectors():
         key = VECTORS["key"].encode()
         assert keyed_hash_bytes == blake3(input_bytes, key=key).digest()
         assert extended_keyed_hash_bytes == blake3(
-            input_bytes, key=key).digest(len=extended_len)
+            input_bytes, key=key).digest(length=extended_len)
         assert extended_keyed_hash_hex == blake3(
-            input_bytes, key=key).hexdigest(len=extended_len)
+            input_bytes, key=key).hexdigest(length=extended_len)
         incremental_keyed_hash = blake3(key=key)
         incremental_keyed_hash.update(input_bytes[:input_len // 2])
         incremental_keyed_hash.update(input_bytes[input_len // 2:])
@@ -68,9 +68,9 @@ def test_vectors():
         assert derive_key_bytes == blake3(input_bytes,
                                           context=context).digest()
         assert extended_derive_key_bytes == blake3(
-            input_bytes, context=context).digest(len=extended_len)
+            input_bytes, context=context).digest(length=extended_len)
         assert extended_derive_key_hex == blake3(
-            input_bytes, context=context).hexdigest(len=extended_len)
+            input_bytes, context=context).hexdigest(length=extended_len)
         incremental_derive_key = blake3(context=context)
         incremental_derive_key.update(input_bytes[:input_len // 2])
         incremental_derive_key.update(input_bytes[input_len // 2:])
@@ -109,23 +109,24 @@ def test_constants():
 def test_example_dot_py():
     hello_hash = \
         "d74981efa70a0c880b8d8c1985d075dbcbf679b99a5f9914e5aaf96b831a9e24"
-    output = subprocess.run([sys.executable, str(HERE / "example.py")],
-                            check=True,
-                            input=b"hello world",
-                            stdout=subprocess.PIPE).stdout.decode().strip()
+    output = subprocess.run(
+        [sys.executable, str(HERE / "example.py")],
+        check=True,
+        input=b"hello world",
+        stdout=subprocess.PIPE).stdout.decode().strip()
     assert output == hello_hash
 
 
 def test_xof():
-    extended = blake3(b"foo").digest(len=100)
+    extended = blake3(b"foo").digest(length=100)
 
     for i in range(100):
-        assert extended[:i] == blake3(b"foo").digest(len=i)
-        assert extended[i:] == blake3(b"foo").digest(len=100 - i, seek=i)
+        assert extended[:i] == blake3(b"foo").digest(length=i)
+        assert extended[i:] == blake3(b"foo").digest(length=100 - i, seek=i)
 
 
 def test_multithreading():
-    b = make_input(10 ** 6)
+    b = make_input(10**6)
     expected = blake3(b).digest()
     assert expected == blake3(b, multithreading=True).digest()
     incremental = blake3()
