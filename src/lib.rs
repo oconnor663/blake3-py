@@ -119,7 +119,9 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         /// Finalize the hasher and return the resulting hash as a hexadecimal
         /// string. This does not modify the hasher, and calling it twice will
         /// give the same result. You can also add more input and finalize
-        /// again.
+        /// again. Note that the `len` keyword refers to the number of raw
+        /// bytes; the hexadecimal encoding will have twice that many
+        /// characters.
         fn hexdigest<'p>(
             &self,
             py: Python<'p>,
@@ -184,5 +186,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     }
 
     m.add_wrapped(wrap_pyfunction!(blake3))?;
+    m.add("OUT_LEN", blake3::OUT_LEN)?;
+    m.add("KEY_LEN", blake3::KEY_LEN)?;
     Ok(())
 }
