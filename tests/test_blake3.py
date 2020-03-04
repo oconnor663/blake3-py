@@ -125,7 +125,7 @@ def test_xof():
 
 
 def test_multithreading():
-    b = make_input(1_000_000)
+    b = make_input(10 ** 6)
     expected = blake3(b).digest()
     assert expected == blake3(b, multithreading=True).digest()
     incremental = blake3()
