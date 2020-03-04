@@ -6,7 +6,7 @@ import sys
 try:
     import blake3
 except ModuleNotFoundError:
-    print("Run ./build.py first.", file=sys.stderr)
+    print("Run tests/build.py first.", file=sys.stderr)
     sys.exit(1)
 
 # Open the input file, if a command line argument is provided. Otherwise read

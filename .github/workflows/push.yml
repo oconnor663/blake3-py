@@ -32,7 +32,9 @@ jobs:
         with:
           profile: minimal
       - run: rustup set default-host ${{ matrix.platform.rust-target }}
-      - name: build.py
-        run: python -u build.py
-      - name: test.py
-        run: python -u test.py
+      - name: Install pytest
+        run: pip install pytest
+      - name: Run build.py
+        run: python -u tests/build.py
+      - name: Run pytest
+        run: python -u -m pytest
