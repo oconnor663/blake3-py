@@ -14,6 +14,7 @@ fn hash_bytes_using_buffer_api(
     py: Python,
     rust_hasher: &mut blake3::Hasher,
     data: &PyAny,
+    multithreading: bool,
 ) -> PyResult<()> {
     let buffer = PyBuffer::get(py, data)?;
 
@@ -43,7 +44,11 @@ fn hash_bytes_using_buffer_api(
     // answer", but I'm not sure. Here's an example of triggering the same race
     // in pure Python: https://gist.github.com/oconnor663/c69cb4dbffb9b13bbced3fe8ce2181ac
     py.allow_threads(|| {
-        rust_hasher.update(slice);
+        if multithreading {
+            rust_hasher.update_with_join::<blake3::join::RayonJoin>(slice);
+        } else {
+            rust_hasher.update(slice);
+        }
     });
 
     // Explicitly release the buffer. This avoid re-acquiring the GIL in its
@@ -80,8 +85,18 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     impl Blake3Hasher {
         /// Add input bytes to the hasher. You can call this any number of
         /// times.
-        fn update(&mut self, py: Python, data: &PyAny) -> PyResult<()> {
-            hash_bytes_using_buffer_api(py, &mut self.rust_hasher, data)
+        fn update(
+            &mut self,
+            py: Python,
+            data: &PyAny,
+            multithreading: Option<bool>,
+        ) -> PyResult<()> {
+            hash_bytes_using_buffer_api(
+                py,
+                &mut self.rust_hasher,
+                data,
+                multithreading.unwrap_or(false),
+            )
         }
 
         /// Finalize the hasher and return the resulting hash as bytes. This
@@ -131,6 +146,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         data: Option<&PyAny>,
         key: Option<&[u8]>,
         context: Option<&str>,
+        multithreading: Option<bool>,
     ) -> PyResult<Blake3Hasher> {
         let mut rust_hasher = match (key, context) {
             // The default, unkeyed hash function.
@@ -157,7 +173,12 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
             }
         };
         if let Some(data) = data {
-            hash_bytes_using_buffer_api(py, &mut rust_hasher, data)?;
+            hash_bytes_using_buffer_api(
+                py,
+                &mut rust_hasher,
+                data,
+                multithreading.unwrap_or(false),
+            )?;
         }
         Ok(Blake3Hasher { rust_hasher })
     }
