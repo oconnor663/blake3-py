@@ -131,3 +131,13 @@ def test_multithreading():
     incremental = blake3()
     incremental.update(b, multithreading=True)
     assert expected == incremental.digest()
+
+
+def test_key_context_incompatible():
+    zero_key = bytearray(32)
+    try:
+        blake3(b"foo", key=zero_key, context="")
+    except TypeError:
+        pass
+    else:
+        assert False, "expected a type error"
