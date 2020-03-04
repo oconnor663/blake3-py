@@ -70,8 +70,8 @@ fn output_bytes(rust_hasher: &blake3::Hasher, len: u64, seek: u64) -> PyResult<V
 }
 
 /// Python bindings for the Rust `blake3` crate. This module provides a single
-/// function, also called `blake3.` This interface is similar to `hashlib` from
-/// the standard library.
+/// function, also called `blake3.` The interface is similar to `hashlib` from
+/// the standard library, which provides `blake2b`, `md5`, etc.
 #[pymodule]
 fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     // The hasher wrapper type is private. Similar to other types in hashlib,
@@ -85,6 +85,17 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     impl Blake3Hasher {
         /// Add input bytes to the hasher. You can call this any number of
         /// times.
+        ///
+        /// Positional arguments:
+        /// - `data` (required): The input bytes.
+        ///
+        /// Keyword arguments:
+        /// - `multithreading`: Setting this to True enables Rayon-based
+        ///   mulithreading in the underlying Rust implementation. This can be a
+        ///   large performance improvement for long inputs, but it can also hurt
+        ///   performance for short inputs. As a rule of thumb, multithreading
+        ///   works well on inputs that are larger than 1 MB. It's a good idea to
+        ///   benchmark this to see if it helps your use case.
         fn update(
             &mut self,
             py: Python,
@@ -102,6 +113,13 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         /// Finalize the hasher and return the resulting hash as bytes. This
         /// does not modify the hasher, and calling it twice will give the same
         /// result. You can also add more input and finalize again.
+        ///
+        /// Keyword arguments:
+        /// - `len`: The number of bytes in the final hash. BLAKE3 supports any
+        ///   output length up to 2**64-1. Note that shorter outputs are
+        ///   prefixes of longer ones. Defaults to 32.
+        /// - `seek`: The starting byte position in the output stream. Defaults
+        ///   to 0.
         fn digest<'p>(
             &self,
             py: Python<'p>,
@@ -119,9 +137,14 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         /// Finalize the hasher and return the resulting hash as a hexadecimal
         /// string. This does not modify the hasher, and calling it twice will
         /// give the same result. You can also add more input and finalize
-        /// again. Note that the `len` keyword refers to the number of raw
-        /// bytes; the hexadecimal encoding will have twice that many
-        /// characters.
+        /// again.
+        ///
+        /// Keyword arguments:
+        /// - `len`: The number of bytes in the final hash, prior to hex
+        ///   encoding. BLAKE3 supports any output length up to 2**64-1. Note
+        ///   that shorter outputs are prefixes of longer ones. Defaults to 32.
+        /// - `seek`: The starting byte position in the output stream, prior to
+        ///   hex encoding. Defaults to 0.
         fn hexdigest<'p>(
             &self,
             py: Python<'p>,
@@ -139,9 +162,26 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     }
 
     /// Construct an incremental hasher object, which can accept any number of
-    /// writes. This interface is similar to `hashlib.blake2b` or `hashlib.md5`
-    /// from the standard library. The optional `data` argument also accepts
-    /// bytes to hash, equivalent to a call to `update`.
+    /// writes. The interface is similar to `hashlib.blake2b` or `hashlib.md5`
+    /// from the standard library.
+    ///
+    /// Positional arguments:
+    /// - `data` (optional): Input bytes to hash. This is equivalent to calling
+    ///   `update` on the returned hasher.
+    ///
+    /// Keyword arguments:
+    /// - `key`: A 32-byte key. Setting this to non-None enables the keyed
+    ///   hashing mode.
+    /// - `context`: A context string. Setting this to non-None enables the key
+    ///   derivation mode. Context strings should be hardcoded, globally
+    ///   unique, and application-specific. `context` and `key` cannot be used
+    ///   at the same time.
+    /// - `multithreading`: Setting this to True enables Rayon-based
+    ///   mulithreading in the underlying Rust implementation. This can be a
+    ///   large performance improvement for long inputs, but it can also hurt
+    ///   performance for short inputs. As a rule of thumb, multithreading
+    ///   works well on inputs that are larger than 1 MB. It's a good idea to
+    ///   benchmark this to see if it helps your use case.
     #[pyfunction]
     fn blake3(
         py: Python,
