@@ -5,7 +5,7 @@
 # PyPI. Installing this with `pip install blake3` is better than something
 # redundant like `pip install PyBLAKE3-py`.
 name = "blake3"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Jack O'Connor <oconnor663@gmail.com>"]
 description = "Python bindings for the Rust blake3 crate"
 repository = "https://github.com/oconnor663/blake3-py"
