@@ -109,7 +109,7 @@ def test_constants():
 def test_example_dot_py():
     hello_hash = \
         "d74981efa70a0c880b8d8c1985d075dbcbf679b99a5f9914e5aaf96b831a9e24"
-    output = subprocess.run([sys.executable, HERE / "example.py"],
+    output = subprocess.run([sys.executable, str(HERE / "example.py")],
                             check=True,
                             input=b"hello world",
                             stdout=subprocess.PIPE).stdout.decode().strip()
