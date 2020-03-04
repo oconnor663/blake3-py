@@ -1,8 +1,13 @@
 #! /usr/bin/env python3
 
-# Run ./build.py first, which puts the blake3 shared library in this directory.
-import blake3
 import sys
+
+# Run ./build.py first, which puts the blake3 shared library in this directory.
+try:
+    import blake3
+except ModuleNotFoundError:
+    print("Run ./build.py first.", file=sys.stderr)
+    sys.exit(1)
 
 # Open the input file, if a command line argument is provided. Otherwise read
 # from stdin.
