@@ -1,9 +1,10 @@
 # blake3-py [![Actions Status](https://github.com/oconnor663/blake3-py/workflows/tests/badge.svg)](https://github.com/oconnor663/blake3-py/actions) [![PyPI version](https://badge.fury.io/py/blake3.svg)](https://pypi.python.org/pypi/blake3)
 
-Python bindings for the Rust [`blake3`](https://crates.io/crates/blake3)
-crate, based on [PyO3](https://github.com/PyO3/pyo3). These bindings
-expose all the features of BLAKE3, including extendable output, keying,
-and multithreading.
+Python bindings for the [official Rust implementation of
+BLAKE3](https://github.com/BLAKE3-team/BLAKE3), based on
+[PyO3](https://github.com/PyO3/pyo3). These bindings expose all the
+features of BLAKE3, including extendable output, keying, and
+multithreading.
 
 **Caution:** This is a brand new library. Please expect some build
 issues on platforms not covered by [CI

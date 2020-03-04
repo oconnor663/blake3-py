@@ -69,13 +69,15 @@ fn output_bytes(rust_hasher: &blake3::Hasher, length: u64, seek: u64) -> PyResul
     Ok(output)
 }
 
-/// Python bindings for the Rust `blake3` crate. This module provides a single
+/// Python bindings for the official Rust implementation of BLAKE3
+/// (https://github.com/BLAKE3-team/BLAKE3). This module provides a single
 /// function, also called `blake3.` The interface is similar to `hashlib` from
 /// the standard library, which provides `blake2b`, `md5`, etc.
 #[pymodule]
 fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     // The hasher wrapper type is private. Similar to other types in hashlib,
     // it's only exposed through the `blake3()` constructor function.
+    /// An incremental BLAKE3 hasher.
     #[pyclass]
     struct Blake3Hasher {
         rust_hasher: blake3::Hasher,
