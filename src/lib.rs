@@ -53,6 +53,17 @@ fn hash_bytes_using_buffer_api(
     Ok(())
 }
 
+fn output_bytes(rust_hasher: &blake3::Hasher, len: u64, seek: u64) -> PyResult<Vec<u8>> {
+    if len > isize::max_value() as u64 {
+        return Err(ValueError::py_err("length overflows isize"));
+    }
+    let mut reader = rust_hasher.finalize_xof();
+    let mut output = vec![0; len as usize];
+    reader.set_position(seek);
+    reader.fill(&mut output);
+    Ok(output)
+}
+
 /// Python bindings for the Rust `blake3` crate. This module provides a single
 /// function, also called `blake3.` This interface is similar to `hashlib` from
 /// the standard library.
@@ -76,16 +87,37 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         /// Finalize the hasher and return the resulting hash as bytes. This
         /// does not modify the hasher, and calling it twice will give the same
         /// result. You can also add more input and finalize again.
-        fn digest<'p>(&self, py: Python<'p>) -> &'p PyBytes {
-            PyBytes::new(py, self.rust_hasher.finalize().as_bytes())
+        fn digest<'p>(
+            &self,
+            py: Python<'p>,
+            len: Option<u64>,
+            seek: Option<u64>,
+        ) -> PyResult<&'p PyBytes> {
+            let bytes = output_bytes(
+                &self.rust_hasher,
+                len.unwrap_or(blake3::KEY_LEN as u64),
+                seek.unwrap_or(0),
+            )?;
+            Ok(PyBytes::new(py, &bytes))
         }
 
         /// Finalize the hasher and return the resulting hash as a hexadecimal
         /// string. This does not modify the hasher, and calling it twice will
         /// give the same result. You can also add more input and finalize
         /// again.
-        fn hexdigest<'p>(&self, py: Python<'p>) -> &'p PyString {
-            PyString::new(py, &self.rust_hasher.finalize().to_hex())
+        fn hexdigest<'p>(
+            &self,
+            py: Python<'p>,
+            len: Option<u64>,
+            seek: Option<u64>,
+        ) -> PyResult<&'p PyString> {
+            let bytes = output_bytes(
+                &self.rust_hasher,
+                len.unwrap_or(blake3::KEY_LEN as u64),
+                seek.unwrap_or(0),
+            )?;
+            let hex = hex::encode(&bytes);
+            Ok(PyString::new(py, &hex))
         }
     }
 
@@ -93,7 +125,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     /// writes. This interface is similar to `hashlib.blake2b` or `hashlib.md5`
     /// from the standard library. The optional `data` argument also accepts
     /// bytes to hash, equivalent to a call to `update`.
-    #[pyfunction(data = "None", key = "None")]
+    #[pyfunction]
     fn blake3(
         py: Python,
         data: Option<&PyAny>,
