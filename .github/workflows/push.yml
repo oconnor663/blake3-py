@@ -27,6 +27,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.platform.python-architecture }}
+      - run: python tests/python_info.py
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
