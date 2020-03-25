@@ -70,10 +70,9 @@ There are binary wheels [available on
 PyPI](https://pypi.org/project/blake3/#files) for most environments, so
 most users do not need a Rust toolchain. If you're building the source
 distribution, or if a binary wheel isn't available for your environment,
-you'll need [rustup](https://rustup.rs/) installed. The toolchain
-version is currently pinned in the `rust-toolchain` file ([tracking
-issue](https://github.com/oconnor663/blake3-py/issues/3)), and rustup
-will automatically download it.
+you'll need nightly Rust installed. (If you use
+[rustup](https://rustup.rs/), it will read the `rust-toolchain` file in
+this project and use the nightly toolchain automatically.)
 
 # Thread Safety and Soundness
 
