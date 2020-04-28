@@ -15,7 +15,7 @@ assert len(sys.argv) == 2
 asset_path = sys.argv[1]
 asset_name = os.path.basename(asset_path)
 
-repo = g.get_repo("oconnor663/blake3-py")
+repo = g.get_repo(os.environ["GITHUB_REPOSITORY"])
 
 tags = list(repo.get_tags())
 
