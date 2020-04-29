@@ -6,8 +6,8 @@ BLAKE3](https://github.com/BLAKE3-team/BLAKE3), based on
 features of BLAKE3, including extendable output, keying, and
 multithreading.
 
-**Caution:** This is a brand new library. Please expect some build
-issues on platforms not covered by [CI
+**Caution:** This is a brand new library. Please expect [some build
+issues](#known-issues) on platforms not covered by [CI
 testing](https://github.com/oconnor663/blake3-py/actions). If you're
 using this for anything important, please test your code against
 known-good outputs. See also the [soundness
@@ -73,6 +73,12 @@ distribution, or if a binary wheel isn't available for your environment,
 you'll need nightly Rust installed. (If you use
 [rustup](https://rustup.rs/), it will read the `rust-toolchain` file in
 this project and use the nightly toolchain automatically.)
+
+## Known Issues
+
+- CentOS 7 requires an updated version of glibc to use the binary wheel.
+  Alternatively, you can build the extension from source. ([tracking
+  issue](https://github.com/oconnor663/blake3-py/issues/5))
 
 # Thread Safety and Soundness
 
