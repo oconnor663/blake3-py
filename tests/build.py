@@ -4,7 +4,9 @@
 # using a destination filename that Python will be able to import on the curent
 # platform. (That is, blake3.so on Linux and macOS, and blake3.pyd on Windows.)
 
+import os
 from pathlib import Path
+import platform
 import shutil
 import subprocess
 
@@ -13,15 +15,22 @@ ROOT = HERE / ".."
 
 subprocess.run(["cargo", "build", "--release"], check=True, cwd=str(ROOT))
 
-SRC_DEST = [
-    ["libblake3.so", "blake3.so"],
-    ["libblake3.dylib", "blake3.so"],
-    ["blake3.dll", "blake3.pyd"],
-]
+if platform.system() == "Windows":
+    SRC_NAME = "blake3.dll"
+    DEST_NAME = "blake3.pyd"
+elif platform.system() == "Darwin":
+    SRC_NAME = "libblake3.dylib"
+    DEST_NAME = "blake3.so"
+else:
+    # Assume everything else behaves like Linux.
+    SRC_NAME = "libblake3.so"
+    DEST_NAME = "blake3.so"
 
-for (src, dest) in SRC_DEST:
-    source_path = ROOT / "target" / "release" / src
-    destination_path = HERE / dest
-    if source_path.exists():
-        print("copying", source_path, "to", destination_path)
-        shutil.copy2(str(source_path), str(destination_path))
+source_path = ROOT / "target"
+cargo_build_target = os.environ.get("CARGO_BUILD_TARGET")
+if cargo_build_target:
+    source_path = source_path / cargo_build_target
+source_path = source_path / "release" / SRC_NAME
+destination_path = HERE / DEST_NAME
+print("copying", source_path, "to", destination_path)
+shutil.copy2(str(source_path), str(destination_path))

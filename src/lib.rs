@@ -16,7 +16,7 @@ fn hash_bytes_using_buffer_api(
     data: &PyAny,
     multithreading: bool,
 ) -> PyResult<()> {
-    let buffer = PyBuffer::get(py, data)?;
+    let buffer = PyBuffer::<u8>::get(data)?;
 
     // Check that the buffer is "simple".
     // XXX: Are these checks sufficient?

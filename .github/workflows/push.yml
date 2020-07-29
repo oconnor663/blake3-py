@@ -8,11 +8,12 @@ on:
 
 jobs:
   tests:
-    name: python${{ matrix.python-version }}-${{ matrix.platform.python-architecture }} ${{ matrix.platform.os }}
+    name: py${{ matrix.python-version }}-${{ matrix.platform.python-architecture }}, Rust ${{ matrix.rust-toolchain }}, ${{ matrix.platform.os }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
         python-version: [3.5, 3.6, 3.7, 3.8]
+        rust-toolchain: [stable, beta, nightly]
         platform: [
           { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu" },
           { os: "macOS-latest",   python-architecture: "x64", rust-target: "x86_64-apple-darwin" },
@@ -20,6 +21,8 @@ jobs:
           { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc" },
         ]
       fail-fast: false
+    env:
+      CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
@@ -31,8 +34,10 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
+          toolchain: ${{ matrix.rust-toolchain }}
+          target: ${{ matrix.platform.rust-target }}
+          default: true
           profile: minimal
-      - run: rustup set default-host ${{ matrix.platform.rust-target }}
       - name: Install pytest
         run: pip install pytest
       - name: Run build.py

@@ -34,7 +34,7 @@ if platform.system() == "Linux":
         "--rm",
         "-v",
         os.getcwd() + ":/io",
-        "konstin2/maturin:master",
+        "konstin2/maturin",
         "build",
         "--release",
         "--no-sdist",

@@ -19,6 +19,8 @@ jobs:
           { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc" },
         ]
       fail-fast: false
+    env:
+      CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
@@ -29,8 +31,10 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
+          target: ${{ matrix.platform.rust-target }}
+          default: true
           profile: minimal
-      - run: rustup set default-host ${{ matrix.platform.rust-target }}
       - name: install maturin
         run: pip install maturin
         # On Linux we'll run Maturin in a Docker container.
