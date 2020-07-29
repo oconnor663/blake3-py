@@ -67,10 +67,10 @@ with the command above, depending on how you installed Python on your
 system.
 
 There are binary wheels [available on
-PyPI](https://pypi.org/project/blake3/#files) for most environments, so
-most users do not need a Rust toolchain. If you're building the source
-distribution, or if a binary wheel isn't available for your environment,
-you'll need to [install the Rust toolchain](https://rustup.rs).
+PyPI](https://pypi.org/project/blake3/#files) for most environments. But
+if you're building the source distribution, or if a binary wheel isn't
+available for your environment, you'll need to [install the Rust
+toolchain](https://rustup.rs).
 
 # Thread Safety and Soundness
 
