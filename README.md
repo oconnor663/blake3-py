@@ -35,13 +35,13 @@ print("The hash of 'hello world' is", blake3(b"hello world").hexdigest())
 # Use the keyed hashing mode, which takes a 32-byte key.
 zero_key = b"\0" * KEY_LEN
 message = b"a message to authenticate"
-mac = blake3(message, key=zero_key)
+mac = blake3(message, key=zero_key).digest()
 
 # Use the key derivation mode, which takes a context string. Context
 # strings should be hardcoded, globally unique, and application-specific.
 example_context = "blake3-py 2020-03-04 11:13:10 example context"
 key_material = b"some super secret key material"
-derived_key = blake3(key_material, context=example_context)
+derived_key = blake3(key_material, context=example_context).digest()
 
 # Extendable output. The default OUT_LEN is 32 bytes.
 extended = blake3(b"foo").digest(length=100)
@@ -53,7 +53,7 @@ assert extended[75:100] == blake3(b"foo").digest(length=25, seek=75)
 # your platform. As a rule of thumb, don't use multithreading for inputs
 # shorter than 1 MB.
 large_input = bytearray(1_000_000)
-hash3 = blake3(large_input, multithreading=True)
+hash3 = blake3(large_input, multithreading=True).digest()
 ```
 
 # Installation
