@@ -18,7 +18,7 @@ concerns](#thread-safety-and-soundness) below.
 ```python
 from blake3 import blake3, KEY_LEN, OUT_LEN
 
-# Hash some input all at once.
+# Hash some input all at once. The input can be bytes, a bytearray, or a memoryview.
 hash1 = blake3(b"foobarbaz").digest()
 
 # Hash the same input incrementally.
