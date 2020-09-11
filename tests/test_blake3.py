@@ -1,3 +1,4 @@
+import array
 from binascii import unhexlify
 import json
 from pathlib import Path
@@ -79,16 +80,21 @@ def test_vectors():
 
 def test_buffer_types():
     expected = blake3(b"foo").digest()
-    assert expected == blake3(bytearray(b"foo")).digest()
     assert expected == blake3(memoryview(b"foo")).digest()
+    assert expected == blake3(bytearray(b"foo")).digest()
     assert expected == blake3(memoryview(bytearray(b"foo"))).digest()
+    # "B" means unsigned char. See https://docs.python.org/3/library/array.html.
+    assert expected == blake3(array.array("B", b"foo")).digest()
+    assert expected == blake3(memoryview(array.array("B", b"foo"))).digest()
 
     incremental = blake3()
-    incremental.update(b"foo")
-    incremental.update(bytearray(b"foo"))
-    incremental.update(memoryview(b"foo"))
-    incremental.update(memoryview(bytearray(b"foo")))
-    assert incremental.digest() == blake3(b"foofoofoofoo").digest()
+    incremental.update(b"one")
+    incremental.update(memoryview(b"two"))
+    incremental.update(bytearray(b"three"))
+    incremental.update(memoryview(bytearray(b"four")))
+    incremental.update(array.array("B", b"five"))
+    incremental.update(memoryview(array.array("B", b"six")))
+    assert incremental.digest() == blake3(b"onetwothreefourfivesix").digest()
 
 
 def test_string_fails():
