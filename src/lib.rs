@@ -1,7 +1,7 @@
 use arrayref::array_ref;
 use blake3::KEY_LEN;
 use pyo3::buffer::PyBuffer;
-use pyo3::exceptions::{TypeError, ValueError};
+use pyo3::exceptions::ValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyString};
 use pyo3::wrap_pyfunction;
@@ -16,33 +16,73 @@ fn hash_bytes_using_buffer_api(
     data: &PyAny,
     multithreading: bool,
 ) -> PyResult<()> {
-    let buffer = PyBuffer::<u8>::get(data)?;
+    // We need to get a PyBuffer representing the buffer's contents. First try to obtain a
+    // PyBuffer<u8>. This is the common case. If that doesn't work, try to get a PyBuffer<i8>.
+    match PyBuffer::<u8>::get(data) {
+        Ok(u8_buf) => {
+            hash_buffer_inner(py, rust_hasher, &u8_buf, multithreading)?;
+            // Explicitly release the buffer. This avoid re-acquiring the GIL in its
+            // destructor.
+            u8_buf.release(py);
+        }
+        Err(u8_err) => {
+            // Trying to get a PyBuffer<u8> has failed. As a fallback, try PyBuffer<i8>, which
+            // represents a buffer of (signed) char. If this fails too, report the error from the
+            // first (unsigned) attempt, since that represents the common case.
+            if let Ok(i8_buf) = PyBuffer::<i8>::get(data) {
+                hash_buffer_inner(py, rust_hasher, &i8_buf, multithreading)?;
+                // As above.
+                i8_buf.release(py);
+            } else {
+                // Both attempts failed. Report the error from the u8 attempt, since that
+                // represents the common case.
+                return Err(u8_err);
+            }
+        }
+    }
+    Ok(())
+}
 
-    // Check that the buffer is "simple".
-    // XXX: Are these checks sufficient?
-    if buffer.item_size() != 1 {
-        return Err(TypeError::py_err("buffer must contain bytes"));
-    }
-    if buffer.dimensions() != 1 {
-        return Err(TypeError::py_err("buffer must be 1-dimensional"));
-    }
-    if !buffer.is_c_contiguous() {
-        return Err(TypeError::py_err("buffer must be contiguous"));
-    }
+fn hash_buffer_inner<T: pyo3::buffer::Element>(
+    py: Python,
+    rust_hasher: &mut blake3::Hasher,
+    buf: &PyBuffer<T>,
+    multithreading: bool,
+) -> PyResult<()> {
+    assert_eq!(std::mem::size_of::<T>(), 1, "only valid for u8 and i8");
+    let slice: &[u8];
+    if let Some(readonly_slice) = buf.as_slice(py) {
+        // Assert the type, since we're about to do an unsafe cast and we don't
+        // want any surprises.
+        let readonly_slice: &[pyo3::buffer::ReadOnlyCell<T>] = readonly_slice;
 
-    // Having verified that the buffer contains plain bytes, construct a slice
-    // of its contents. Assuming the checks above are sufficient, I believe
-    // this is sound. However, things gets trickier when we release the GIL
-    // immediately below.
-    let slice =
-        unsafe { std::slice::from_raw_parts(buffer.buf_ptr() as *const u8, buffer.item_count()) };
+        // Getting a slice succeeded. However, what we have is &[ReadOnlyCell<T>], and we need to
+        // unsafely convert that to &[u8] for hashing. As noted below, this makes us vulnerable to
+        // some race conditions, but it seems to be consistent with what the Python standard
+        // library does in its own hash implementations. Also note that if T is i8, this involves a
+        // pointer cast from i8 to u8. On two's complement architectures this is valid, and I don't
+        // think Rust even supports non-two's-complement architectures. This is a private function,
+        // which we don't call with types other than u8 or i8, so we don't need to worry about size
+        // issues. (Though we do assert the size of T above, out of an abundance of caution.)
+        unsafe {
+            slice = std::slice::from_raw_parts(
+                readonly_slice.as_ptr() as *const u8,
+                readonly_slice.len(),
+            );
+        }
+    } else {
+        return Err(pyo3::exceptions::BufferError::py_err(
+            "buffer is not contiguous",
+        ));
+    }
 
     // Release the GIL while we hash the slice.
     // XXX: This is per se unsound. Another Python thread with a reference to
     // `data` could write to it while this slice exists, which violates Rust's
     // aliasing rules. It's possible this could result in "just getting a racy
-    // answer", but I'm not sure. Here's an example of triggering the same race
-    // in pure Python: https://gist.github.com/oconnor663/c69cb4dbffb9b13bbced3fe8ce2181ac
+    // answer", but I'm not sure. In any case, here's an example of triggering
+    // the same race using the standard hashlib module:
+    // https://gist.github.com/oconnor663/c69cb4dbffb9b13bbced3fe8ce2181ac
     py.allow_threads(|| {
         if multithreading {
             rust_hasher.update_with_join::<blake3::join::RayonJoin>(slice);
@@ -50,10 +90,6 @@ fn hash_bytes_using_buffer_api(
             rust_hasher.update(slice);
         }
     });
-
-    // Explicitly release the buffer. This avoid re-acquiring the GIL in its
-    // destructor.
-    buffer.release(py);
 
     Ok(())
 }

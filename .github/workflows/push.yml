@@ -39,7 +39,7 @@ jobs:
           default: true
           profile: minimal
       - name: Install pytest
-        run: pip install pytest
+        run: pip install pytest numpy
       - name: Run build.py
         run: python -u tests/build.py
       - name: Run pytest
