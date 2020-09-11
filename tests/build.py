@@ -1,8 +1,8 @@
 #! /usr/bin/env python3
 
-# Build the shared library, and then copy it into the root of the project,
-# using a destination filename that Python will be able to import on the curent
-# platform. (That is, blake3.so on Linux and macOS, and blake3.pyd on Windows.)
+# Build the shared library, and then copy it into this directory, so that
+# test_blake3.py can see it. We use the filename that Python requires on the
+# curent platform: blake3.so on Linux and macOS, and blake3.pyd on Windows.
 
 import os
 from pathlib import Path
