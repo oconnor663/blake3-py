@@ -40,6 +40,8 @@ jobs:
           profile: minimal
       - name: Install pytest
         run: pip install pytest
+      - name: Install pyarrow
+        run: pip install pyarrow
       - name: Run build.py
         run: python -u tests/build.py
       - name: Run pytest

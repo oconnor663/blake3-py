@@ -91,6 +91,14 @@ def test_buffer_types():
     assert incremental.digest() == blake3(b"foofoofoofoo").digest()
 
 
+def test_arrow():
+    import pyarrow as pa
+    ar = pa.array(['foo', 'bar'])
+    blake = blake3()
+    blake.update(memoryview(ar.buffers()[1]))
+    blake.update(memoryview(ar.buffers()[2]))
+
+
 def test_string_fails():
     try:
         blake3("a string")
