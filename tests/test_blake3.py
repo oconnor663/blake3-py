@@ -1,6 +1,7 @@
 import array
 from binascii import unhexlify
 import json
+import numpy
 from pathlib import Path
 import subprocess
 import sys
@@ -86,6 +87,9 @@ def test_buffer_types():
     # "B" means unsigned char. See https://docs.python.org/3/library/array.html.
     assert expected == blake3(array.array("B", b"foo")).digest()
     assert expected == blake3(memoryview(array.array("B", b"foo"))).digest()
+    # "b" means (signed) char.
+    assert expected == blake3(array.array("b", b"foo")).digest()
+    assert expected == blake3(memoryview(array.array("b", b"foo"))).digest()
 
     incremental = blake3()
     incremental.update(b"one")
@@ -94,7 +98,34 @@ def test_buffer_types():
     incremental.update(memoryview(bytearray(b"four")))
     incremental.update(array.array("B", b"five"))
     incremental.update(memoryview(array.array("B", b"six")))
-    assert incremental.digest() == blake3(b"onetwothreefourfivesix").digest()
+    incremental.update(array.array("b", b"seven"))
+    incremental.update(memoryview(array.array("b", b"eight")))
+    assert incremental.digest() == blake3(b"onetwothreefourfivesixseveneight").digest()
+
+
+def test_int_array_fails():
+    try:
+        # "i" represents the int type, which is larger than a char.
+        blake3(array.array("i"))
+    except BufferError:
+        pass
+    else:
+        assert False, "expected a buffer error"
+
+
+def test_strided_array_fails():
+    unstrided = numpy.array([1, 2, 3, 4], numpy.uint8)
+    strided = numpy.lib.stride_tricks.as_strided(unstrided, shape=[2], strides=[2])
+    assert bytes(strided) == bytes([1, 3])
+    # Unstrided works fine.
+    blake3(unstrided)
+    try:
+        # But strided fails.
+        blake3(strided)
+    except BufferError:
+        pass
+    else:
+        assert False, "expected a buffer error"
 
 
 def test_string_fails():
