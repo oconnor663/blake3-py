@@ -44,4 +44,4 @@ jobs:
       - name: Run build.py
         run: python -u tests/build.py
       - name: Run pytest
-        run: python -u -m pytest
+        run: python -u -m pytest --verbose
