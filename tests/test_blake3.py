@@ -100,7 +100,8 @@ def test_buffer_types():
     incremental.update(memoryview(array.array("B", b"six")))
     incremental.update(array.array("b", b"seven"))
     incremental.update(memoryview(array.array("b", b"eight")))
-    assert incremental.digest() == blake3(b"onetwothreefourfivesixseveneight").digest()
+    assert incremental.digest() == blake3(
+        b"onetwothreefourfivesixseveneight").digest()
 
 
 def test_int_array_fails():
@@ -115,7 +116,9 @@ def test_int_array_fails():
 
 def test_strided_array_fails():
     unstrided = numpy.array([1, 2, 3, 4], numpy.uint8)
-    strided = numpy.lib.stride_tricks.as_strided(unstrided, shape=[2], strides=[2])
+    strided = numpy.lib.stride_tricks.as_strided(unstrided,
+                                                 shape=[2],
+                                                 strides=[2])
     assert bytes(strided) == bytes([1, 3])
     # Unstrided works fine.
     blake3(unstrided)
