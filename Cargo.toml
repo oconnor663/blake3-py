@@ -19,6 +19,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 blake3 = { version = "0.3.5", features = ["rayon"] }
-pyo3 = { version = "0.11.1", features = ["extension-module"] }
+pyo3 = { version = "0.12", features = ["extension-module"] }
 arrayref = "0.3.6"
 hex = "0.4.2"

@@ -1,7 +1,7 @@
 use arrayref::array_ref;
 use blake3::KEY_LEN;
 use pyo3::buffer::PyBuffer;
-use pyo3::exceptions::ValueError;
+use pyo3::exceptions::{PyBufferError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyString};
 use pyo3::wrap_pyfunction;
@@ -71,9 +71,7 @@ fn hash_buffer_inner<T: pyo3::buffer::Element>(
             );
         }
     } else {
-        return Err(pyo3::exceptions::BufferError::py_err(
-            "buffer is not contiguous",
-        ));
+        return Err(PyBufferError::new_err("buffer is not contiguous"));
     }
 
     // Release the GIL while we hash the slice.
@@ -96,7 +94,7 @@ fn hash_buffer_inner<T: pyo3::buffer::Element>(
 
 fn output_bytes(rust_hasher: &blake3::Hasher, length: u64, seek: u64) -> PyResult<Vec<u8>> {
     if length > isize::max_value() as u64 {
-        return Err(ValueError::py_err("length overflows isize"));
+        return Err(PyValueError::new_err("length overflows isize"));
     }
     let mut reader = rust_hasher.finalize_xof();
     let mut output = vec![0; length as usize];
@@ -236,7 +234,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
                 if key.len() == KEY_LEN {
                     blake3::Hasher::new_keyed(array_ref!(key, 0, KEY_LEN))
                 } else {
-                    return Err(ValueError::py_err(format!(
+                    return Err(PyValueError::new_err(format!(
                         "expected a {}-byte key, found {}",
                         KEY_LEN,
                         key.len()
@@ -247,7 +245,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
             (None, Some(context)) => blake3::Hasher::new_derive_key(context),
             // Error: can't use both modes at the same time.
             (Some(_), Some(_)) => {
-                return Err(ValueError::py_err(
+                return Err(PyValueError::new_err(
                     "cannot use key and context at the same time",
                 ))
             }
