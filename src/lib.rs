@@ -119,6 +119,13 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
 
     #[pymethods]
     impl Blake3Hasher {
+        #[getter]
+        /// Returns the name of the hashing algorithm.
+        fn name(&self) -> &str {
+            "blake3"
+        }
+
+
         /// Add input bytes to the hasher. You can call this any number of
         /// times.
         ///
@@ -145,6 +152,17 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
                 multithreading.unwrap_or(false),
             )
         }
+
+        /// Return a copy of the Blake3Hasher hash object.
+        /// The usual caveats of Python multithreading apply here.
+        /// Calling `copy` in a multi-threaded situation without a lock on the copied object
+        /// will likely result in incorrect output. 
+        fn copy(&self) -> Blake3Hasher {
+            Blake3Hasher {
+                rust_hasher: self.rust_hasher.clone(),
+            }
+        }
+
 
         /// Finalize the hasher and return the resulting hash as bytes. This
         /// does not modify the hasher, and calling it twice will give the same

@@ -182,3 +182,47 @@ def test_key_context_incompatible():
         pass
     else:
         assert False, "expected a type error"
+
+
+def test_name():
+    b = blake3()
+    assert b.name == "blake3"
+
+
+def test_copy_basic():
+    b = make_input(10**6)
+    b2 = make_input(10**6)
+    h1 = blake3(b)
+    expected = h1.digest()
+    h2 = h1.copy()
+    assert expected == h2.digest()
+    h1.update(b2)
+    expected2 = h1.digest()
+    assert expected2 != h2.digest(), "Independence test failed"
+    h2.update(b2)
+    assert expected2 == h2.digest(), "Update state of copy diverged from expected state"
+
+
+def test_copy_multithreading():
+    """This test is somewhat redundant and takes a belt-and-suspenders approach. If the rest
+    of the tests pass but this test fails, something *very* weird is going on. """
+    b = make_input(10 ** 6)
+    b2 = make_input(10 ** 6)
+    b3 = make_input(10 ** 6)
+
+    h1 = blake3(b, multithreading=True)
+    expected = h1.digest()
+    h2 = h1.copy()
+    h3 = blake3(b, multithreading=True)
+    assert expected == h2.digest()
+    h1.update(b2, multithreading=True)
+    h3.update(b2, multithreading=True)
+    h3.update(b3, multithreading=True)
+
+    expected2 = h1.digest()
+    assert expected2 != h2.digest(), "Independence test failed"
+    h2.update(b2, multithreading=True)
+    assert expected2 == h2.digest(), "Update state of copy diverged from expected state"
+
+    h2.update(b3, multithreading=True)
+    assert h2.digest() == h3.digest(), "Update state of copy diverged from expected state"
