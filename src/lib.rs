@@ -153,10 +153,10 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
             )
         }
 
-        /// Return a copy of a Blake3Hasher object.
-        /// The usual caveats of multithreading as mentioned in `./README.md` apply here.
+        /// Return a copy of the Blake3Hasher hash object.
+        /// The usual caveats of Python multithreading apply here.
         /// Calling `copy` in a multi-threaded situation without a lock on the copied object
-        /// will likely result in non-deterministic behavior.
+        /// will likely result in incorrect output. 
         fn copy(&self) -> Blake3Hasher {
             Blake3Hasher {
                 rust_hasher: self.rust_hasher.clone(),
