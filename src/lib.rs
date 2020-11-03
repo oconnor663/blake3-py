@@ -120,14 +120,21 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     #[pymethods]
     impl Blake3Hasher {
         #[getter]
-        /// Returns the name of the hashing algorithm.
+        /// Returns the name of this hashing algorithm, "blake3".
         fn name(&self) -> &str {
             "blake3"
         }
 
-
         /// Add input bytes to the hasher. You can call this any number of
         /// times.
+        ///
+        /// Note that `update` is not thread safe, and multiple threads sharing
+        /// a single instance must use a `threading.Lock` or similar if one of
+        /// them might be calling `update`. The thread safety issues here are
+        /// worse than usual, because this method releases the GIL internally.
+        /// However, updating one hasher from multiple threads is a very odd
+        /// thing to do, and real world program almost never need to worry about
+        /// this.
         ///
         /// Positional arguments:
         /// - `data` (required): The input bytes.
@@ -153,20 +160,28 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
             )
         }
 
-        /// Return a copy of the Blake3Hasher hash object.
-        /// The usual caveats of Python multithreading apply here.
-        /// Calling `copy` in a multi-threaded situation without a lock on the copied object
-        /// will likely result in incorrect output. 
+        /// Return a copy (“clone”) of the hash object. This can be used to
+        /// efficiently compute the digests of data sharing a common initial
+        /// substring.
+        ///
+        /// This is a read-only method, but the multithreading warning attached
+        /// to the `update` method applies here. It is not safe to call this
+        /// method while another thread might be calling `update` on the same
+        /// instance.
         fn copy(&self) -> Blake3Hasher {
             Blake3Hasher {
                 rust_hasher: self.rust_hasher.clone(),
             }
         }
 
-
         /// Finalize the hasher and return the resulting hash as bytes. This
         /// does not modify the hasher, and calling it twice will give the same
         /// result. You can also add more input and finalize again.
+        ///
+        /// This is a read-only method, but the multithreading warning attached
+        /// to the `update` method applies here. It is not safe to call this
+        /// method while another thread might be calling `update` on the same
+        /// instance.
         ///
         /// Keyword arguments:
         /// - `length`: The number of bytes in the final hash. BLAKE3 supports
@@ -192,6 +207,11 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         /// string. This does not modify the hasher, and calling it twice will
         /// give the same result. You can also add more input and finalize
         /// again.
+        ///
+        /// This is a read-only method, but the multithreading warning attached
+        /// to the `update` method applies here. It is not safe to call this
+        /// method while another thread might be calling `update` on the same
+        /// instance.
         ///
         /// Keyword arguments:
         /// - `length`: The number of bytes in the final hash, prior to hex
@@ -230,12 +250,9 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     ///   derivation mode. Context strings should be hardcoded, globally
     ///   unique, and application-specific. `context` and `key` cannot be used
     ///   at the same time.
-    /// - `multithreading`: Setting this to True enables Rayon-based
-    ///   mulithreading in the underlying Rust implementation. This can be a
-    ///   large performance improvement for long inputs, but it can also hurt
-    ///   performance for short inputs. As a rule of thumb, multithreading
-    ///   works well on inputs that are larger than 1 MB. It's a good idea to
-    ///   benchmark this to see if it helps your use case.
+    /// - `multithreading`: See the `multithreading` argument on the `update`
+    ///   method. This flag only applies to this one function call. It is not a
+    ///   persistent setting, and it has no effect if `data` is omitted.
     #[pyfunction]
     fn blake3(
         py: Python,
