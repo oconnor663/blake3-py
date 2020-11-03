@@ -204,6 +204,8 @@ def test_copy_basic():
 
 
 def test_copy_multithreading():
+    """This test is somewhat redundant and takes a belt-and-suspenders approach. If the rest
+    of the tests pass but this test fails, something *very* weird is going on. """
     b = make_input(10 ** 6)
     b2 = make_input(10 ** 6)
     b3 = make_input(10 ** 6)
