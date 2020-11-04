@@ -104,6 +104,14 @@ def test_buffer_types():
         b"onetwothreefourfivesixseveneight").digest()
 
 
+def test_buffer_types():
+    key = bytes([42]) * 32
+    expected = blake3(b"foo", key=key).digest()
+    # Check that we can use a bytearray or a memoryview to get the same result.
+    assert expected == blake3(b"foo", key=bytearray(key)).digest()
+    assert expected == blake3(b"foo", key=memoryview(key)).digest()
+
+
 def test_int_array_fails():
     try:
         # "i" represents the int type, which is larger than a char.
@@ -178,7 +186,7 @@ def test_key_context_incompatible():
     zero_key = bytearray(32)
     try:
         blake3(b"foo", key=zero_key, context="")
-    except TypeError:
+    except ValueError:
         pass
     else:
         assert False, "expected a type error"
