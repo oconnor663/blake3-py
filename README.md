@@ -6,7 +6,7 @@ BLAKE3](https://github.com/BLAKE3-team/BLAKE3), based on
 features of BLAKE3, including extendable output, keying, and
 multithreading.
 
-# Example
+## Examples
 
 ```python
 from blake3 import blake3, KEY_LEN, OUT_LEN
@@ -57,7 +57,7 @@ assert hasher1.digest() == blake3(b"foobar").digest()
 assert hasher2.digest() == blake3(b"foobaz").digest()
 ```
 
-# Installation
+## Installation
 
 ```
 pip install blake3
@@ -73,7 +73,7 @@ if you're building the source distribution, or if a binary wheel isn't
 available for your environment, you'll need to [install the Rust
 toolchain](https://rustup.rs).
 
-# Thread Safety and the GIL
+## Thread Safety and the GIL
 
 Like the `hashlib` functions in the Python standard library, we release
 the GIL while hashing, to avoid blocking other threads for a potentially
@@ -81,6 +81,6 @@ long time. However, this allows race conditions: it's possible for other
 threads to access a hasher or an input buffer while hashing is going on.
 This is worse than an ordinary Python race condition. It's undefined
 behavior in the C/C++/Rust sense. But this seems to be the standard way
-to do hashing in Python. In any case, it should be extremely rare for
-real world programs to share a hasher between threads. For more details
-about this issue, see the comments on usafe code in `lib.rs`.
+to do hashing in Python. In any case, it should be rare for real world
+programs to share a hasher between threads. For more details about this
+issue, see the comments on usafe code in `lib.rs`.
