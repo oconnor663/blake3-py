@@ -67,7 +67,7 @@ unsafe fn unsafe_slice_from_typed_buffer<'a, T: pyo3::buffer::Element>(
         // that as a safety guarantee, and in any case other threads can at
         // least write to the buffer.) However, retaining the GIL during update
         // is an unacceptable performance issue, because update is potentially
-        // long-running. If we retained the GIL, then a app hashing a large
+        // long-running. If we retained the GIL, then an app hashing a large
         // buffer on a background thread might inadvertently block its main
         // thread from processing UI events for a second or more.
         //
@@ -76,16 +76,13 @@ unsafe fn unsafe_slice_from_typed_buffer<'a, T: pyo3::buffer::Element>(
         // race with standard types like this:
         // https://gist.github.com/oconnor663/c69cb4dbffb9b13bbced3fe8ce2181ac
         //
-        // At the end of the days, the situation appears to be this:
+        // At the end of the day, the situation appears to be this:
         //
-        // - It's likely that this is a "just reading racy bytes", rather than
-        //   causing "really serious undefined behavior". In theory we're never
-        //   allowed to reason this way, though, and no one's happy about it.
-        // - Even if this race were exploitable, in practice only pathological
-        //   programs can trigger it. Updating a hasher concurrently from
-        //   different threads is just a weird thing to do, and it's almost
-        //   always a correctness bug, regardless of whether it's a
-        //   soundness/security bug too.
+        // - Even if this race turns out to be exploitable, in practice only
+        //   pathological programs should trigger it. Updating a hasher
+        //   concurrently from different threads is just a weird thing to do,
+        //   and it's almost always a correctness bug, regardless of whether
+        //   it's a soundness/security bug too.
         // - This sort of data race risk seems to be typical when Python
         //   extensions release the GIL to call into long-running native code.
         //   Again, this is what hashlib does too.
