@@ -47,6 +47,14 @@ assert extended[75:100] == blake3(b"foo").digest(length=25, seek=75)
 # shorter than 1 MB.
 large_input = bytearray(1_000_000)
 hash3 = blake3(large_input, multithreading=True).digest()
+
+# Copy a hasher that has already accepted some input.
+hasher1 = blake3(b"foo")
+hasher2 = hasher1.copy()
+hasher1.update(b"bar")
+hasher2.update(b"baz")
+assert hasher1.digest() == blake3(b"foobar").digest()
+assert hasher2.digest() == blake3(b"foobaz").digest()
 ```
 
 # Installation
