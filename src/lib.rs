@@ -72,9 +72,8 @@ unsafe fn unsafe_slice_from_typed_buffer<'a, T: pyo3::buffer::Element>(
         // thread from processing UI events for a second or more.
         //
         // The standard hashing implementations in Python's hashlib have the
-        // same problem (arguably worse, because they're slower 😆). They
-        // release the GIL too. You can trigger a real data race with standard
-        // types like this:
+        // same problem. They release the GIL too. You can trigger a real data
+        // race with standard types like this:
         // https://gist.github.com/oconnor663/c69cb4dbffb9b13bbced3fe8ce2181ac
         //
         // At the end of the days, the situation appears to be this:
