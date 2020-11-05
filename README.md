@@ -6,13 +6,6 @@ BLAKE3](https://github.com/BLAKE3-team/BLAKE3), based on
 features of BLAKE3, including extendable output, keying, and
 multithreading.
 
-**Caution:** This is a brand new library. Please expect some build
-issues on platforms not covered by [CI
-testing](https://github.com/oconnor663/blake3-py/actions). If you're
-using this for anything important, please test your code against
-known-good outputs. See also the [soundness
-concerns](#thread-safety-and-soundness) below.
-
 # Example
 
 ```python
@@ -72,24 +65,14 @@ if you're building the source distribution, or if a binary wheel isn't
 available for your environment, you'll need to [install the Rust
 toolchain](https://rustup.rs).
 
-# Thread Safety and Soundness
+# Thread Safety and the GIL
 
-This wrapper is not currently thread-safe. Like the hash implementations
-in the Python standard library, we release the GIL during `update`, to
-avoid blocking the entire process. However, that means that calling the
-`update` method on the same object from multiple threads at the same
-time is undefined behavior. We could solve this by putting a `Mutex`
-inside the wrapper type, but I'd like to get some expert advice about
-the best practice here first.
-
-A deeper problem is that another thread might mutate a `bytearray` while
-we're hashing it, and while our Rust code is treating it as a `&[u8]`.
-That violates Rust's aliasing guarantees and is also technically
-undefined behavior. However, the only possible way to solve this while
-still supporting `bytearray` would be to retain the GIL. Again, I'm in
-need of expert advice.
-
-These concerns are more theoretical than practical, however. If you're
-racing to update a hasher, or racing to hash a buffer while it's being
-written to, the result is inherently nondeterministic. That's almost
-certainly a bug in your program, whether or not it's technically sound.
+Like the `hashlib` functions in the Python standard library, we release
+the GIL while hashing, to avoid blocking other threads for a potentially
+long time. However, this allows race conditions: it's possible for other
+threads to access a hasher or an input buffer while hashing is going on.
+This is worse than an ordinary Python race condition. It's undefined
+behavior in the C/C++/Rust sense. But this seems to be the standard way
+to do hashing in Python. In any case, it should be extremely rare for
+real world programs to share a hasher between threads. For more details
+about this issue, see the comments on usafe code in `lib.rs`.
