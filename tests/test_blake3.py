@@ -104,12 +104,21 @@ def test_buffer_types():
         b"onetwothreefourfivesixseveneight").digest()
 
 
-def test_buffer_types():
+def test_key_types():
     key = bytes([42]) * 32
     expected = blake3(b"foo", key=key).digest()
     # Check that we can use a bytearray or a memoryview to get the same result.
     assert expected == blake3(b"foo", key=bytearray(key)).digest()
     assert expected == blake3(b"foo", key=memoryview(key)).digest()
+
+
+def test_short_key():
+    try:
+        blake3(b"foo", key=b"too short")
+    except ValueError:
+        pass
+    else:
+        assert False, "expected a key-too-short error"
 
 
 def test_int_array_fails():
