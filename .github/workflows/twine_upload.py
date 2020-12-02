@@ -12,6 +12,10 @@ tag_name = os.environ["GITHUB_TAG"]
 tag_prefix = "refs/tags/"
 if tag_name.startswith(tag_prefix):
     tag_name = tag_name[len(tag_prefix):]
+rerelease_suffix = "_rerelease"
+if tag_name.endswith(rerelease_suffix):
+    tag_name = tag_name[:len(tag_name) - len(rerelease_suffix)]
+    print("This is a rerelease of {}.".format(tag_name))
 
 repo = g.get_repo("oconnor663/blake3-py")
 
@@ -37,7 +41,7 @@ for asset_name in asset_names:
 
 print("Uploading to PyPI with twine...")
 # Credentials are in the environment, TWINE_USERNAME and TWINE_PASSWORD.
-twine_cmd = ["twine", "upload"] + asset_files
+twine_cmd = ["twine", "upload", "--skip-existing"] + asset_files
 subprocess.run(twine_cmd, check=True)
 
 print("Success!")

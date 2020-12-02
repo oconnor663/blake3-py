@@ -11,6 +11,12 @@ tag_name = os.environ["GITHUB_TAG"]
 tag_prefix = "refs/tags/"
 if tag_name.startswith(tag_prefix):
     tag_name = tag_name[len(tag_prefix):]
+rerelease_suffix = "_rerelease"
+is_rerelease_tag = False
+if tag_name.endswith(rerelease_suffix):
+    tag_name = tag_name[:len(tag_name) - len(rerelease_suffix)]
+    print("This is a rerelease of {}.".format(tag_name))
+    is_rerelease_tag = True
 assert len(sys.argv) == 2
 asset_path = sys.argv[1]
 asset_name = os.path.basename(asset_path)
@@ -41,25 +47,34 @@ for release in releases:
 else:
     raise RuntimeError("no release for tag " + repr(tag_name))
 
-print("Uploading " + repr(asset_path) + "...")
-for i in range(RETRIES):
-    try:
-        print("Upload attempt #{} of {}...".format(i + 1, RETRIES))
-        release.upload_asset(asset_path)
-        break
-    except github.GithubException as github_error:
-        # Unfortunately the asset upload API is flaky. Even worse, it often
-        # partially succeeds, returning an error to the caller but leaving the
-        # release in a state where subsequent uploads of the same asset will
-        # fail with an "already_exists" error. (Though the asset is not visible
-        # on github.com, so we can't just declare victory and move on.) If we
-        # detect this case, explicitly delete the asset and continue retrying.
-        print(github_error)
-        for asset in release.get_assets():
-            if asset.name == asset_name:
-                print("Found uploaded asset after failure. Deleting...")
-                asset.delete_asset()
-else:
-    raise RuntimeError("All upload attempts failed.")
+asset_already_released = False
+if is_rerelease_tag:
+    for asset in release.get_assets():
+        if asset.name == asset_name:
+            print("Found uploaded asset during rerelease. Skipping upload.")
+            asset_already_released = True
+            break
+
+if not asset_already_released:
+    print("Uploading " + repr(asset_path) + "...")
+    for i in range(RETRIES):
+        try:
+            print("Upload attempt #{} of {}...".format(i + 1, RETRIES))
+            release.upload_asset(asset_path)
+            break
+        except github.GithubException as github_error:
+            # Unfortunately the asset upload API is flaky. Even worse, it often
+            # partially succeeds, returning an error to the caller but leaving the
+            # release in a state where subsequent uploads of the same asset will
+            # fail with an "already_exists" error. (Though the asset is not visible
+            # on github.com, so we can't just declare victory and move on.) If we
+            # detect this case, explicitly delete the asset and continue retrying.
+            print(github_error)
+            for asset in release.get_assets():
+                if asset.name == asset_name:
+                    print("Found uploaded asset after failure. Deleting...")
+                    asset.delete_asset()
+    else:
+        raise RuntimeError("All upload attempts failed.")
 
 print("Success!")
