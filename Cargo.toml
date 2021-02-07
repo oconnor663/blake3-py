@@ -17,6 +17,9 @@ edition = "2018"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+neon = ["blake3/neon"]
+
 [dependencies]
 blake3 = { version = "0.3.5", features = ["rayon"] }
 pyo3 = { version = "0.12", features = ["extension-module"] }
