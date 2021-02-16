@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 try:
-    from blake3 import blake3
+    from blake3 import blake3, __version__
 except ModuleNotFoundError:
     print("Run tests/build.py first.", file=sys.stderr)
     raise
@@ -243,3 +243,10 @@ def test_copy_multithreading():
 
     h2.update(b3, multithreading=True)
     assert h2.digest() == h3.digest(), "Update state of copy diverged from expected state"
+
+
+def test_version():
+    # Just sanity check that it's a version string. No need to try to go out of
+    # our way to parse Cargo.toml.
+    assert type(__version__) is str
+    assert len(__version__.split(".")) == 3

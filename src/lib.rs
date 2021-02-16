@@ -318,5 +318,6 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(blake3))?;
     m.add("OUT_LEN", blake3::OUT_LEN)?;
     m.add("KEY_LEN", blake3::KEY_LEN)?;
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }
