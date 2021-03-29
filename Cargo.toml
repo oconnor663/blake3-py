@@ -26,3 +26,4 @@ pyo3 = { version = "0.12", features = ["extension-module"] }
 arrayref = "0.3.6"
 hex = "0.4.2"
 rayon = "1.2.1"
+once_cell = "1.7.2"

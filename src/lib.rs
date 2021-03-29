@@ -1,10 +1,13 @@
 use arrayref::array_ref;
 use blake3::KEY_LEN;
+use once_cell::sync::Lazy;
 use pyo3::buffer::PyBuffer;
 use pyo3::exceptions::{PyBufferError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyString};
 use pyo3::wrap_pyfunction;
+use std::collections::HashMap;
+use std::sync::RwLock;
 
 unsafe fn unsafe_slice_from_buffer<'a>(py: Python, data: &'a PyAny) -> PyResult<&'a [u8]> {
     // First see if we can get a u8 slice. This is the common case.
@@ -109,20 +112,35 @@ fn output_bytes(rust_hasher: &blake3::Hasher, length: u64, seek: u64) -> PyResul
     Ok(output)
 }
 
-fn make_thread_pool(max_threads: Option<usize>) -> PyResult<Option<rayon::ThreadPool>> {
-    match max_threads {
-        None | Some(1) => Ok(None),
-        Some(0) => Err(PyValueError::new_err("0 is not a valid number of threads")),
-        Some(num_threads) => {
-            match rayon::ThreadPoolBuilder::new()
-                .num_threads(num_threads)
-                .build()
-            {
-                Ok(pool) => Ok(Some(pool)),
-                Err(e) => Err(PyValueError::new_err(e.to_string())),
-            }
+fn update_with_max_threads(hasher: &mut blake3::Hasher, input: &[u8], num_threads: usize) {
+    static THREAD_POOLS: Lazy<RwLock<HashMap<usize, rayon::ThreadPool>>> =
+        Lazy::new(|| RwLock::new(HashMap::new()));
+
+    // Get the thread pool corresponding to the given num_threads. We only need a read guard to
+    // install a closure on the pool, but it doesn't exist yet, take a write guard and create it.
+    let read_guard = {
+        let intial_read_guard = THREAD_POOLS.read().unwrap();
+        if intial_read_guard.contains_key(&num_threads) {
+            intial_read_guard
+        } else {
+            drop(intial_read_guard);
+            let mut write_guard = THREAD_POOLS.write().unwrap();
+            write_guard.insert(
+                num_threads,
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(num_threads)
+                    .build()
+                    .unwrap(),
+            );
+            drop(write_guard);
+            THREAD_POOLS.read().unwrap()
         }
-    }
+    };
+
+    read_guard
+        .get(&num_threads)
+        .unwrap()
+        .install(|| hasher.update_with_join::<blake3::join::RayonJoin>(input));
 }
 
 /// Python bindings for the official Rust implementation of BLAKE3
@@ -137,7 +155,8 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     #[pyclass]
     struct Blake3Hasher {
         rust_hasher: blake3::Hasher,
-        pool: Option<rayon::ThreadPool>,
+        multithreading: bool,
+        max_threads: Option<usize>,
     }
 
     #[pymethods]
@@ -190,9 +209,16 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
             // again, see all the comments above about data race risks.
             py.allow_threads(|| {
                 let hasher = &mut self.rust_hasher;
-                if let Some(pool) = &self.pool {
-                    pool.install(|| hasher.update_with_join::<blake3::join::RayonJoin>(slice));
+                if self.multithreading {
+                    if let Some(max_threads) = self.max_threads {
+                        // On a custom pool with a fixed number of threads.
+                        update_with_max_threads(&mut self.rust_hasher, slice, max_threads);
+                    } else {
+                        // On the default Rayon pool.
+                        hasher.update_with_join::<blake3::join::RayonJoin>(slice);
+                    }
                 } else {
+                    // Single threaded.
                     hasher.update(slice);
                 }
             });
@@ -210,7 +236,8 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         fn copy(&self) -> PyResult<Blake3Hasher> {
             Ok(Blake3Hasher {
                 rust_hasher: self.rust_hasher.clone(),
-                pool: make_thread_pool(self.pool.as_ref().map(|p| p.current_num_threads()))?,
+                multithreading: self.multithreading,
+                max_threads: self.max_threads,
             })
         }
 
@@ -290,18 +317,27 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     ///   application-specific context string. Setting this to non-None enables
     ///   the BLAKE3 key derivation mode. `derive_key_context` and `key` cannot
     ///   be used at the same time.
-    /// - `max_threads`: Setting this to an integer greater than 1 enables
-    ///   multithreaded hashing, if available, using up to the given number of
-    ///   threads. Some build flavors or API-compatible implementations of this
-    ///   module might not support threading, in which case this argument has no
-    ///   effect. If threading is supported, the number of threads used in
-    ///   practice may be fewer than the given maximum.
+    /// - `multithreading`: If True, enable multithreaded hashing. Some build
+    ///   flavors or API-compatible implementations of this module might not
+    ///   support multithreading, in which case this argument has no effect.
+    ///   Currently, the number of threads used by default is equal to the
+    ///   number of logical cores, but this isn't guaranteed and may change.
+    ///   Note that multithreading isn't generally benefical for inputs shorter
+    ///   than 1 MB or so, and benchmarking your specific use case is a good
+    ///   idea.
+    /// - `max_threads`: If set to an integer greater than or equal to 1, limits
+    ///   the maximum number of threads used for hashing. The actual number of
+    ///   threads used may be fewer. When `max_threads` is set, `multithreading`
+    ///   defaults to True. Some build flavors or API-compatible implementations
+    ///   of this module might not support multithreading, in which case this
+    ///   argument has no effect.
     #[pyfunction]
     fn blake3(
         py: Python,
         data: Option<&PyAny>,
         key: Option<&PyAny>,
         derive_key_context: Option<&str>,
+        multithreading: Option<bool>,
         max_threads: Option<usize>,
     ) -> PyResult<Blake3Hasher> {
         let rust_hasher = match (key, derive_key_context) {
@@ -334,9 +370,18 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
                 ))
             }
         };
+        if let Some(0) = max_threads {
+            return Err(PyValueError::new_err("0 is not a valid number of threads"));
+        }
         let mut python_hasher = Blake3Hasher {
             rust_hasher,
-            pool: make_thread_pool(max_threads)?,
+            multithreading: match (multithreading, max_threads) {
+                (None, None) => false,
+                (Some(false), _) => false,
+                (_, Some(max)) => max > 1,
+                (Some(true), None) => true,
+            },
+            max_threads,
         };
         if let Some(data) = data {
             python_hasher.update(py, data)?;
