@@ -185,12 +185,12 @@ def test_xof():
         assert extended[i:] == blake3(b"foo").digest(length=100 - i, seek=i)
 
 
-def test_multithreading():
+def test_max_threads():
     b = make_input(10**6)
     expected = blake3(b).digest()
-    assert expected == blake3(b, multithreading=True).digest()
+    assert expected == blake3(b, max_threads=2).digest()
     incremental = blake3()
-    incremental.update(b, multithreading=True)
+    incremental.update(b)
     assert expected == incremental.digest()
 
 
@@ -223,28 +223,28 @@ def test_copy_basic():
     assert expected2 == h2.digest(), "Update state of copy diverged from expected state"
 
 
-def test_copy_multithreading():
+def test_copy_with_threads():
     """This test is somewhat redundant and takes a belt-and-suspenders approach. If the rest
     of the tests pass but this test fails, something *very* weird is going on. """
     b = make_input(10 ** 6)
     b2 = make_input(10 ** 6)
     b3 = make_input(10 ** 6)
 
-    h1 = blake3(b, multithreading=True)
+    h1 = blake3(b, max_threads=2)
     expected = h1.digest()
     h2 = h1.copy()
-    h3 = blake3(b, multithreading=True)
+    h3 = blake3(b, max_threads=2)
     assert expected == h2.digest()
-    h1.update(b2, multithreading=True)
-    h3.update(b2, multithreading=True)
-    h3.update(b3, multithreading=True)
+    h1.update(b2)
+    h3.update(b2)
+    h3.update(b3)
 
     expected2 = h1.digest()
     assert expected2 != h2.digest(), "Independence test failed"
-    h2.update(b2, multithreading=True)
+    h2.update(b2)
     assert expected2 == h2.digest(), "Update state of copy diverged from expected state"
 
-    h2.update(b3, multithreading=True)
+    h2.update(b3)
     assert h2.digest() == h3.digest(), "Update state of copy diverged from expected state"
 
 

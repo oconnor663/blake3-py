@@ -109,6 +109,22 @@ fn output_bytes(rust_hasher: &blake3::Hasher, length: u64, seek: u64) -> PyResul
     Ok(output)
 }
 
+fn make_thread_pool(max_threads: Option<usize>) -> PyResult<Option<rayon::ThreadPool>> {
+    match max_threads {
+        None | Some(1) => Ok(None),
+        Some(0) => Err(PyValueError::new_err("0 is not a valid number of threads")),
+        Some(num_threads) => {
+            match rayon::ThreadPoolBuilder::new()
+                .num_threads(num_threads)
+                .build()
+            {
+                Ok(pool) => Ok(Some(pool)),
+                Err(e) => Err(PyValueError::new_err(e.to_string())),
+            }
+        }
+    }
+}
+
 /// Python bindings for the official Rust implementation of BLAKE3
 /// (https://github.com/BLAKE3-team/BLAKE3). This module provides a single
 /// function, also called `blake3.` The interface is similar to `hashlib` from
@@ -121,6 +137,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     #[pyclass]
     struct Blake3Hasher {
         rust_hasher: blake3::Hasher,
+        pool: Option<rayon::ThreadPool>,
     }
 
     #[pymethods]
@@ -162,20 +179,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         ///
         /// Positional arguments:
         /// - `data` (required): The input bytes.
-        ///
-        /// Keyword arguments:
-        /// - `multithreading`: Setting this to True enables Rayon-based
-        ///   mulithreading in the underlying Rust implementation. This can be a
-        ///   large performance improvement for long inputs, but it can also hurt
-        ///   performance for short inputs. As a rule of thumb, multithreading
-        ///   works well on inputs that are larger than 1 MB. It's a good idea to
-        ///   benchmark this to see if it helps your use case.
-        fn update(
-            &mut self,
-            py: Python,
-            data: &PyAny,
-            multithreading: Option<bool>,
-        ) -> PyResult<()> {
+        fn update(&mut self, py: Python, data: &PyAny) -> PyResult<()> {
             // Get a slice that's not tied to the `py` lifetime.
             // XXX: The safety situation here is a bit complicated. See all the
             //      comments in unsafe_slice_from_buffer.
@@ -185,11 +189,11 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
             // won't block other threads if this update is long running. But
             // again, see all the comments above about data race risks.
             py.allow_threads(|| {
-                if let Some(true) = multithreading {
-                    self.rust_hasher
-                        .update_with_join::<blake3::join::RayonJoin>(slice);
+                let hasher = &mut self.rust_hasher;
+                if let Some(pool) = &self.pool {
+                    pool.install(|| hasher.update_with_join::<blake3::join::RayonJoin>(slice));
                 } else {
-                    self.rust_hasher.update(slice);
+                    hasher.update(slice);
                 }
             });
             Ok(())
@@ -203,10 +207,11 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         /// to the `update` method applies here. It is not safe to call this
         /// method while another thread might be calling `update` on the same
         /// instance.
-        fn copy(&self) -> Blake3Hasher {
-            Blake3Hasher {
+        fn copy(&self) -> PyResult<Blake3Hasher> {
+            Ok(Blake3Hasher {
                 rust_hasher: self.rust_hasher.clone(),
-            }
+                pool: make_thread_pool(self.pool.as_ref().map(|p| p.current_num_threads()))?,
+            })
         }
 
         /// Finalize the hasher and return the resulting hash as bytes. This
@@ -285,16 +290,19 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     ///   application-specific context string. Setting this to non-None enables
     ///   the BLAKE3 key derivation mode. `derive_key_context` and `key` cannot
     ///   be used at the same time.
-    /// - `multithreading`: See the `multithreading` argument on the `update`
-    ///   method. This flag only applies to this one function call. It is not a
-    ///   persistent setting, and it has no effect if `data` is omitted.
+    /// - `max_threads`: Setting this to an integer greater than 1 enables
+    ///   multithreaded hashing, if available, using up to the given number of
+    ///   threads. Some build flavors or API-compatible implementations of this
+    ///   module might not support threading, in which case this argument has no
+    ///   effect. If threading is supported, the number of threads used in
+    ///   practice may be fewer than the given maximum.
     #[pyfunction]
     fn blake3(
         py: Python,
         data: Option<&PyAny>,
         key: Option<&PyAny>,
         derive_key_context: Option<&str>,
-        multithreading: Option<bool>,
+        max_threads: Option<usize>,
     ) -> PyResult<Blake3Hasher> {
         let rust_hasher = match (key, derive_key_context) {
             // The default, unkeyed hash function.
@@ -326,9 +334,12 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
                 ))
             }
         };
-        let mut python_hasher = Blake3Hasher { rust_hasher };
+        let mut python_hasher = Blake3Hasher {
+            rust_hasher,
+            pool: make_thread_pool(max_threads)?,
+        };
         if let Some(data) = data {
-            python_hasher.update(py, data, multithreading)?;
+            python_hasher.update(py, data)?;
         }
         Ok(python_hasher)
     }
