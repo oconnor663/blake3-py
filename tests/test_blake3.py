@@ -160,9 +160,10 @@ def test_string_fails():
 
 
 def test_constants():
-    import blake3
-    assert blake3.OUT_LEN == 32
-    assert blake3.KEY_LEN == 32
+    b = blake3()
+    assert b.digest_size == 32
+    assert b.block_size == 64
+    assert b.key_size == 32
 
 
 def test_example_dot_py():

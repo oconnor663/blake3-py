@@ -126,9 +126,27 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     #[pymethods]
     impl Blake3Hasher {
         #[getter]
-        /// Returns the name of this hashing algorithm, "blake3".
+        /// The lowercase name of this hashing algorithm, "blake3".
         fn name(&self) -> &str {
             "blake3"
+        }
+
+        #[getter]
+        /// The default size of the resulting hash in bytes, 32.
+        fn digest_size(&self) -> usize {
+            blake3::OUT_LEN
+        }
+
+        #[getter]
+        /// The internal block size in bytes, 64.
+        fn block_size(&self) -> usize {
+            64
+        }
+
+        #[getter]
+        /// The key size in bytes, 32.
+        fn key_size(&self) -> usize {
+            blake3::KEY_LEN
         }
 
         /// Add input bytes to the hasher. You can call this any number of
@@ -316,8 +334,6 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     }
 
     m.add_wrapped(wrap_pyfunction!(blake3))?;
-    m.add("OUT_LEN", blake3::OUT_LEN)?;
-    m.add("KEY_LEN", blake3::KEY_LEN)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }

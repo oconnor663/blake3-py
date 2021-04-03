@@ -2,14 +2,15 @@
 
 Python bindings for the [official Rust implementation of
 BLAKE3](https://github.com/BLAKE3-team/BLAKE3), based on
-[PyO3](https://github.com/PyO3/pyo3). These bindings expose all the
-features of BLAKE3, including extendable output, keying, and
-multithreading.
+[PyO3](https://github.com/PyO3/pyo3). These bindings expose all the features of
+BLAKE3, including extendable output, keying, and multithreading. The basic API
+matches that of Python's standard
+[`hashlib`](https://docs.python.org/3/library/hashlib.html) module.
 
 ## Examples
 
 ```python
-from blake3 import blake3, KEY_LEN, OUT_LEN
+from blake3 import blake3
 
 # Hash some input all at once. The input can be bytes, a bytearray, or a memoryview.
 hash1 = blake3(b"foobarbaz").digest()
@@ -26,19 +27,19 @@ assert hash1 == hash2
 print("The hash of 'hello world' is", blake3(b"hello world").hexdigest())
 
 # Use the keyed hashing mode, which takes a 32-byte key.
-zero_key = b"\0" * KEY_LEN
+zero_key = b"\0" * 32
 message = b"a message to authenticate"
 mac = blake3(message, key=zero_key).digest()
 
-# Use the key derivation mode, which takes a context string. Context
-# strings should be hardcoded, globally unique, and application-specific.
+# Use the key derivation mode, which takes a context string. Context strings
+# should be hardcoded, globally unique, and application-specific.
 context = "blake3-py 2020-03-04 11:13:10 example context"
 key_material = b"some super secret key material"
 derived_key = blake3(key_material, derive_key_context=context).digest()
 
-# Extendable output. The default OUT_LEN is 32 bytes.
+# Extendable output. The default digest size is 32 bytes.
 extended = blake3(b"foo").digest(length=100)
-assert extended[:OUT_LEN] == blake3(b"foo").digest()
+assert extended[:32] == blake3(b"foo").digest()
 assert extended[75:100] == blake3(b"foo").digest(length=25, seek=75)
 
 # Hash a large input with multithreading. Note that this can be slower
