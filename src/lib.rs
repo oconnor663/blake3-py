@@ -155,7 +155,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     #[pyclass]
     struct Blake3Hasher {
         rust_hasher: blake3::Hasher,
-        multithreading: bool,
+        use_rayon: bool,
         max_threads: Option<usize>,
     }
 
@@ -209,7 +209,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
             // again, see all the comments above about data race risks.
             py.allow_threads(|| {
                 let hasher = &mut self.rust_hasher;
-                if self.multithreading {
+                if self.use_rayon {
                     if let Some(max_threads) = self.max_threads {
                         // On a custom pool with a fixed number of threads.
                         update_with_max_threads(&mut self.rust_hasher, slice, max_threads);
@@ -236,7 +236,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         fn copy(&self) -> PyResult<Blake3Hasher> {
             Ok(Blake3Hasher {
                 rust_hasher: self.rust_hasher.clone(),
-                multithreading: self.multithreading,
+                use_rayon: self.use_rayon,
                 max_threads: self.max_threads,
             })
         }
@@ -375,7 +375,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         }
         let mut python_hasher = Blake3Hasher {
             rust_hasher,
-            multithreading: match (multithreading, max_threads) {
+            use_rayon: match (multithreading, max_threads) {
                 (None, None) => false,
                 (Some(false), _) => false,
                 (_, Some(max)) => max > 1,
