@@ -68,12 +68,14 @@ def test_vectors():
         # derive key
         context = "BLAKE3 2019-12-27 16:29:52 test vectors context"
         assert derive_key_bytes == blake3(input_bytes,
-                                          context=context).digest()
+                                          derive_key_context=context).digest()
         assert extended_derive_key_bytes == blake3(
-            input_bytes, context=context).digest(length=extended_len)
+            input_bytes,
+            derive_key_context=context).digest(length=extended_len)
         assert extended_derive_key_hex == blake3(
-            input_bytes, context=context).hexdigest(length=extended_len)
-        incremental_derive_key = blake3(context=context)
+            input_bytes,
+            derive_key_context=context).hexdigest(length=extended_len)
+        incremental_derive_key = blake3(derive_key_context=context)
         incremental_derive_key.update(input_bytes[:input_len // 2])
         incremental_derive_key.update(input_bytes[input_len // 2:])
         assert derive_key_bytes == incremental_derive_key.digest()
@@ -194,7 +196,7 @@ def test_multithreading():
 def test_key_context_incompatible():
     zero_key = bytearray(32)
     try:
-        blake3(b"foo", key=zero_key, context="")
+        blake3(b"foo", key=zero_key, derive_key_context="")
     except ValueError:
         pass
     else:

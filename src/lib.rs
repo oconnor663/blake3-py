@@ -261,12 +261,12 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     ///   `update` on the returned hasher.
     ///
     /// Keyword arguments:
-    /// - `key`: A 32-byte key. Setting this to non-None enables the keyed
-    ///   hashing mode.
-    /// - `context`: A context string. Setting this to non-None enables the key
-    ///   derivation mode. Context strings should be hardcoded, globally
-    ///   unique, and application-specific. `context` and `key` cannot be used
-    ///   at the same time.
+    /// - `key`: A 32-byte key. Setting this to non-None enables the BLAKE3
+    ///   keyed hashing mode.
+    /// - `derive_key_context`: A hardcoded, globally unique,
+    ///   application-specific context string. Setting this to non-None enables
+    ///   the BLAKE3 key derivation mode. `derive_key_context` and `key` cannot
+    ///   be used at the same time.
     /// - `multithreading`: See the `multithreading` argument on the `update`
     ///   method. This flag only applies to this one function call. It is not a
     ///   persistent setting, and it has no effect if `data` is omitted.
@@ -275,10 +275,10 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         py: Python,
         data: Option<&PyAny>,
         key: Option<&PyAny>,
-        context: Option<&str>,
+        derive_key_context: Option<&str>,
         multithreading: Option<bool>,
     ) -> PyResult<Blake3Hasher> {
-        let rust_hasher = match (key, context) {
+        let rust_hasher = match (key, derive_key_context) {
             // The default, unkeyed hash function.
             (None, None) => blake3::Hasher::new(),
             // The keyed hash function.
@@ -304,7 +304,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
             // Error: can't use both modes at the same time.
             (Some(_), Some(_)) => {
                 return Err(PyValueError::new_err(
-                    "cannot use key and context at the same time",
+                    "cannot use key and derive_key_context at the same time",
                 ))
             }
         };
