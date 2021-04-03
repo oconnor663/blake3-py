@@ -32,9 +32,9 @@ mac = blake3(message, key=zero_key).digest()
 
 # Use the key derivation mode, which takes a context string. Context
 # strings should be hardcoded, globally unique, and application-specific.
-example_context = "blake3-py 2020-03-04 11:13:10 example context"
+context = "blake3-py 2020-03-04 11:13:10 example context"
 key_material = b"some super secret key material"
-derived_key = blake3(key_material, context=example_context).digest()
+derived_key = blake3(key_material, derive_key_context=context).digest()
 
 # Extendable output. The default OUT_LEN is 32 bytes.
 extended = blake3(b"foo").digest(length=100)
