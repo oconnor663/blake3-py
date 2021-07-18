@@ -12,7 +12,9 @@ jobs:
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9] # This list needs to be kept in sync with tag.yml and maturin_build_wheel.py.
+        # This list needs to be kept in sync with tag.yml and maturin_build_wheel.py.
+        # TODO: Add PyPy support to tag.yml and maturin_build_wheel.py.
+        python-version: [3.6, 3.7, 3.8, 3.9, pypy-3.7]
         rust-toolchain: [stable, beta, nightly]
         platform: [
           { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu" },
@@ -26,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.platform.python-architecture }}
@@ -38,10 +40,22 @@ jobs:
           target: ${{ matrix.platform.rust-target }}
           default: true
           profile: minimal
-      # We use numpy to test the error case of trying to hash a strided buffer.
-      - name: Install pytest and numpy
-        run: pip install pytest numpy
-      - name: Run build.py
-        run: python -u tests/build.py
-      - name: Run pytest
-        run: python -u -m pytest --verbose
+      # Install binaries from PyPI here. Install libraries below, in the
+      # virtualenv.
+      - run: pip install maturin virtualenv
+      - run: maturin build
+      - name: Run tests in a virtualenv
+        run: |
+          virtualenv test_virtualenv
+          source test_virtualenv/bin/activate
+          python --version
+
+          # Install libraries from PyPI here. We use numpy to test the error
+          # case of trying to hash a strided buffer.
+          pip install pytest numpy
+
+          # Install the built blake3 Python module in this virtualenv.
+          maturin develop
+
+          # Run tests with pytest.
+          python -u -m pytest --verbose
