@@ -187,7 +187,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
             py.allow_threads(|| {
                 if let Some(true) = multithreading {
                     self.rust_hasher
-                        .update_with_join::<blake3::join::RayonJoin>(slice);
+                        .update_rayon(slice);
                 } else {
                     self.rust_hasher.update(slice);
                 }
