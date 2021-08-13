@@ -13,8 +13,10 @@ jobs:
       matrix:
         python-version: [3.6, 3.7, 3.8, 3.9] # This list needs to be kept in sync with push.yml and maturin_build_wheel.py.
         platform: [
+          # This list should be kept in sync with push.yml.
           { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu" },
           { os: "macOS-latest",   python-architecture: "x64", rust-target: "x86_64-apple-darwin" },
+          { os: "macOS-latest",   python-architecture: "x64", rust-target: "aarch64-apple-darwin" },
           { os: "windows-latest", python-architecture: "x64", rust-target: "x86_64-pc-windows-msvc" },
           { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc" },
         ]
