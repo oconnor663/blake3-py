@@ -46,4 +46,5 @@ jobs:
       - name: Run build.py
         run: python -u tests/build.py
       - name: Run pytest
+        if: ${{ matrix.platform.rust-target != 'aarch64-apple-darwin' }}
         run: python -u -m pytest --verbose
