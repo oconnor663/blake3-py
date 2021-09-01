@@ -22,6 +22,16 @@ jobs:
           { os: "windows-latest", python-architecture: "x64", rust-target: "x86_64-pc-windows-msvc" },
           { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc" },
         ]
+        exclude:
+          # aarch64 macOS has no support for Python version lower than 3.8
+          - python-version: 3.6
+            platform:
+              os: "macOS-latest"
+              rust-target: "aarch64-apple-darwin"
+          - python-version: 3.7
+            platform:
+              os: "macOS-latest"
+              rust-target: "aarch64-apple-darwin"
       fail-fast: false
     env:
       CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
