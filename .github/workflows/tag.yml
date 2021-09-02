@@ -7,18 +7,18 @@ on:
 
 jobs:
   wheel:
-    name: python${{ matrix.python-version }}-${{ matrix.platform.python-architecture }} ${{ matrix.platform.os }}
+    name: Python ${{ matrix.python-version }}, ${{ matrix.platform.name }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8, 3.9] # This list needs to be kept in sync with push.yml and maturin_build_wheel.py.
         platform: [
           # This list should be kept in sync with push.yml.
-          { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu" },
-          { os: "macOS-latest",   python-architecture: "x64", rust-target: "x86_64-apple-darwin" },
-          { os: "macOS-latest",   python-architecture: "x64", rust-target: "aarch64-apple-darwin" },
-          { os: "windows-latest", python-architecture: "x64", rust-target: "x86_64-pc-windows-msvc" },
-          { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc" },
+          { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu", name: "Linux x64" },
+          { os: "macOS-latest",   python-architecture: "x64", rust-target: "x86_64-apple-darwin",      name: "macOS x64" },
+          { os: "macOS-latest",   python-architecture: "x64", rust-target: "aarch64-apple-darwin",     name: "macOS ARM" },
+          { os: "windows-latest", python-architecture: "x64", rust-target: "x86_64-pc-windows-msvc",   name: "Windows x86" },
+          { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc",     name: "Windows x64" },
         ]
         exclude:
           # aarch64 macOS has no support for Python version lower than 3.8
