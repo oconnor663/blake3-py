@@ -32,8 +32,8 @@ if platform.system() == "Linux":
         "docker",
         "run",
         "--rm",
-        "-v",
-        os.getcwd() + ":/io",
+        "--volume=" + os.getcwd() + ":/io",
+        "--env=BLAKE3_CI=1", # don't allow fallbacks for missing AVX-512 support
         "konstin2/maturin",
         "build",
         "--release",
