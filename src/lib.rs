@@ -155,9 +155,13 @@ impl Clone for ThreadingMode {
 /// - `max_threads`: The maximum number of threads that the implementation
 ///   may use for hashing. The default value is 1, meaning single-threaded.
 ///   `max_threads` may be any positive integer, or the value of the class
-///   attribute `blake3.AUTO`, which means as many threads as efficiently
-///   possible. The actual number of threads used by the implementation may
-///   be less than the maximum and may change over time.
+///   attribute `blake3.AUTO`, which lets the implementation use as many
+///   threads as it likes. (Currently this means a number of threads equal
+///   to the number of logical CPU cores, but this is not guaranteed.) The
+///   actual number of threads used may be less than the maximum and may
+///   change over time. API-compatible reimplementations of this library
+///   may also ignore this parameter entirely, if they don't support
+///   multithreading.
 #[pyclass(name = "blake3")]
 #[derive(Clone)]
 struct Blake3Class {
