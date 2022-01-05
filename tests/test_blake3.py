@@ -266,3 +266,21 @@ def test_version():
     # our way to parse Cargo.toml.
     assert type(__version__) is str
     assert len(__version__.split(".")) == 3
+
+
+def test_invalid_max_threads():
+    # Check 0.
+    try:
+        blake3(max_threads=0)
+    except ValueError:
+        pass
+    else:
+        assert False, "expected a ValueError"
+
+    # -1 is AUTO, so skip that and check -2.
+    try:
+        blake3(max_threads=-2)
+    except ValueError:
+        pass
+    else:
+        assert False, "expected a ValueError"

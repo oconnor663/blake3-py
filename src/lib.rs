@@ -5,8 +5,6 @@ use pyo3::exceptions::{PyBufferError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyString};
 
-const AUTO: isize = -1;
-
 unsafe fn unsafe_slice_from_buffer<'a>(py: Python, data: &'a PyAny) -> PyResult<&'a [u8]> {
     // First see if we can get a u8 slice. This is the common case.
     match unsafe_slice_from_typed_buffer::<u8>(py, data) {
@@ -233,7 +231,7 @@ impl Blake3Class {
         };
         let threading_mode = match max_threads {
             None | Some(1) => ThreadingMode::Single,
-            Some(AUTO) => ThreadingMode::Auto,
+            Some(Self::AUTO) => ThreadingMode::Auto,
             Some(n) if n > 1 => ThreadingMode::Pool {
                 max_threads: n as usize,
                 pool: new_thread_pool(n as usize),
