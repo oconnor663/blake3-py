@@ -162,6 +162,7 @@ impl Clone for ThreadingMode {
 ///   change over time. API-compatible reimplementations of this library
 ///   may also ignore this parameter entirely, if they don't support
 ///   multithreading.
+/// - `usedforsecurity`: Currently ignored. See the standard hashlib docs.
 #[pyclass(name = "blake3")]
 #[derive(Clone)]
 struct Blake3Class {
@@ -202,7 +203,8 @@ impl Blake3Class {
         "*",
         key = "None",
         derive_key_context = "None",
-        max_threads = "1"
+        max_threads = "1",
+        usedforsecurity = "true"
     )]
     fn new(
         py: Python,
@@ -210,7 +212,9 @@ impl Blake3Class {
         key: Option<&PyAny>,
         derive_key_context: Option<&str>,
         max_threads: isize,
+        usedforsecurity: bool,
     ) -> PyResult<Blake3Class> {
+        let _ = usedforsecurity; // currently ignored
         let rust_hasher = match (key, derive_key_context) {
             // The default, unkeyed hash function.
             (None, None) => blake3::Hasher::new(),

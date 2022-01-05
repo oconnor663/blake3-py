@@ -334,3 +334,8 @@ def test_keyword_only_arguments():
         assert False, "expected TypeError"
     except TypeError:
         pass
+
+
+def test_usedforsecurity_ignored():
+    blake3(usedforsecurity=True)
+    blake3(usedforsecurity=False)
