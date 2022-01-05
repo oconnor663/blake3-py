@@ -19,6 +19,5 @@ neon = ["blake3/neon"]
 [dependencies]
 blake3 = { version = "1.0.0", features = ["rayon"] }
 pyo3 = { version = "0.15", features = ["extension-module"] }
-arrayref = "0.3.6"
 hex = "0.4.2"
 rayon = "1.2.1"

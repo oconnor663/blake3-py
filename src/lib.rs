@@ -1,5 +1,3 @@
-use arrayref::array_ref;
-use blake3::KEY_LEN;
 use pyo3::buffer::PyBuffer;
 use pyo3::exceptions::{PyBufferError, PyValueError};
 use pyo3::prelude::*;
@@ -227,14 +225,13 @@ impl Blake3Class {
                 // We're going to copy the bytes immediately, so we don't have
                 // the same race condition issues here.
                 let key_slice: &[u8] = unsafe { unsafe_slice_from_buffer(py, key_buf)? };
-                if key_slice.len() != KEY_LEN {
-                    return Err(PyValueError::new_err(format!(
-                        "expected a {}-byte key, found {}",
-                        KEY_LEN,
-                        key_slice.len()
-                    )));
-                }
-                blake3::Hasher::new_keyed(array_ref!(key_slice, 0, KEY_LEN))
+                let key_array: &[u8; 32] = if let Ok(array) = key_slice.try_into() {
+                    array
+                } else {
+                    let msg = format!("expected a {}-byte key, found {}", 32, key_slice.len());
+                    return Err(PyValueError::new_err(msg));
+                };
+                blake3::Hasher::new_keyed(key_array)
             }
             // The key derivation function.
             (None, Some(context)) => blake3::Hasher::new_derive_key(context),
