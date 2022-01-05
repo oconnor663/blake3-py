@@ -1,13 +1,12 @@
 use arrayref::array_ref;
 use blake3::KEY_LEN;
-use once_cell::sync::Lazy;
 use pyo3::buffer::PyBuffer;
 use pyo3::exceptions::{PyBufferError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyString};
 use pyo3::wrap_pyfunction;
-use std::collections::HashMap;
-use std::sync::RwLock;
+
+const AUTO: isize = -1;
 
 unsafe fn unsafe_slice_from_buffer<'a>(py: Python, data: &'a PyAny) -> PyResult<&'a [u8]> {
     // First see if we can get a u8 slice. This is the common case.
@@ -112,35 +111,33 @@ fn output_bytes(rust_hasher: &blake3::Hasher, length: u64, seek: u64) -> PyResul
     Ok(output)
 }
 
-fn update_with_max_threads(hasher: &mut blake3::Hasher, input: &[u8], num_threads: usize) {
-    static THREAD_POOLS: Lazy<RwLock<HashMap<usize, rayon::ThreadPool>>> =
-        Lazy::new(|| RwLock::new(HashMap::new()));
-
-    // Get the thread pool corresponding to the given num_threads. We only need a read guard to
-    // install a closure on the pool, but it doesn't exist yet, take a write guard and create it.
-    let read_guard = {
-        let intial_read_guard = THREAD_POOLS.read().unwrap();
-        if intial_read_guard.contains_key(&num_threads) {
-            intial_read_guard
-        } else {
-            drop(intial_read_guard);
-            let mut write_guard = THREAD_POOLS.write().unwrap();
-            write_guard.insert(
-                num_threads,
-                rayon::ThreadPoolBuilder::new()
-                    .num_threads(num_threads)
-                    .build()
-                    .unwrap(),
-            );
-            drop(write_guard);
-            THREAD_POOLS.read().unwrap()
-        }
-    };
-
-    read_guard
-        .get(&num_threads)
+fn new_thread_pool(max_threads: usize) -> rayon::ThreadPool {
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(max_threads)
+        .build()
         .unwrap()
-        .install(|| hasher.update_rayon(input));
+}
+
+enum ThreadingMode {
+    Single,
+    Auto,
+    Pool {
+        pool: rayon::ThreadPool,
+        max_threads: usize,
+    },
+}
+
+impl Clone for ThreadingMode {
+    fn clone(&self) -> Self {
+        match self {
+            ThreadingMode::Single => ThreadingMode::Single,
+            ThreadingMode::Auto => ThreadingMode::Auto,
+            ThreadingMode::Pool { max_threads, .. } => ThreadingMode::Pool {
+                max_threads: *max_threads,
+                pool: new_thread_pool(*max_threads),
+            },
+        }
+    }
 }
 
 /// Python bindings for the official Rust implementation of BLAKE3
@@ -153,10 +150,10 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
     // it's only exposed through the `blake3()` constructor function.
     /// An incremental BLAKE3 hasher.
     #[pyclass]
+    #[derive(Clone)]
     struct Blake3Hasher {
         rust_hasher: blake3::Hasher,
-        use_rayon: bool,
-        max_threads: Option<usize>,
+        threading_mode: ThreadingMode,
     }
 
     #[pymethods]
@@ -207,19 +204,15 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
             // Release the GIL while we hash the slice. This ensures that we
             // won't block other threads if this update is long running. But
             // again, see all the comments above about data race risks.
-            py.allow_threads(|| {
-                let hasher = &mut self.rust_hasher;
-                if self.use_rayon {
-                    if let Some(max_threads) = self.max_threads {
-                        // On a custom pool with a fixed number of threads.
-                        update_with_max_threads(&mut self.rust_hasher, slice, max_threads);
-                    } else {
-                        // On the default Rayon pool.
-                        hasher.update_rayon(slice);
-                    }
-                } else {
-                    // Single threaded.
-                    hasher.update(slice);
+            py.allow_threads(|| match &mut self.threading_mode {
+                ThreadingMode::Single => {
+                    self.rust_hasher.update(slice);
+                }
+                ThreadingMode::Auto => {
+                    self.rust_hasher.update_rayon(slice);
+                }
+                ThreadingMode::Pool { pool, .. } => {
+                    pool.install(|| self.rust_hasher.update_rayon(slice));
                 }
             });
             Ok(())
@@ -234,11 +227,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         /// method while another thread might be calling `update` on the same
         /// instance.
         fn copy(&self) -> PyResult<Blake3Hasher> {
-            Ok(Blake3Hasher {
-                rust_hasher: self.rust_hasher.clone(),
-                use_rayon: self.use_rayon,
-                max_threads: self.max_threads,
-            })
+            Ok(self.clone())
         }
 
         /// Finalize the hasher and return the resulting hash as bytes. This
@@ -337,8 +326,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
         data: Option<&PyAny>,
         key: Option<&PyAny>,
         derive_key_context: Option<&str>,
-        multithreading: Option<bool>,
-        max_threads: Option<usize>,
+        max_threads: Option<isize>,
     ) -> PyResult<Blake3Hasher> {
         let rust_hasher = match (key, derive_key_context) {
             // The default, unkeyed hash function.
@@ -370,18 +358,18 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
                 ))
             }
         };
-        if let Some(0) = max_threads {
-            return Err(PyValueError::new_err("0 is not a valid number of threads"));
-        }
+        let threading_mode = match max_threads {
+            None | Some(1) => ThreadingMode::Single,
+            Some(AUTO) => ThreadingMode::Auto,
+            Some(n) if n > 1 => ThreadingMode::Pool {
+                max_threads: n as usize,
+                pool: new_thread_pool(n as usize),
+            },
+            _ => return Err(PyValueError::new_err("not a valid number of threads")),
+        };
         let mut python_hasher = Blake3Hasher {
             rust_hasher,
-            use_rayon: match (multithreading, max_threads) {
-                (None, None) => false,
-                (Some(false), _) => false,
-                (_, Some(max)) => max > 1,
-                (Some(true), None) => true,
-            },
-            max_threads,
+            threading_mode,
         };
         if let Some(data) = data {
             python_hasher.update(py, data)?;
