@@ -340,7 +340,7 @@ impl Blake3Class {
     ///   prefixes of longer ones. Defaults to 32.
     /// - `seek`: The starting byte position in the output stream. Defaults
     ///   to 0.
-    #[args("*", length = "32", seek = "0")]
+    #[args(length = "32", "*", seek = "0")]
     fn digest<'p>(&self, py: Python<'p>, length: u64, seek: u64) -> PyResult<&'p PyBytes> {
         let bytes = output_bytes(&self.rust_hasher, length, seek)?;
         Ok(PyBytes::new(py, &bytes))
@@ -362,7 +362,7 @@ impl Blake3Class {
     ///   that shorter outputs are prefixes of longer ones. Defaults to 32.
     /// - `seek`: The starting byte position in the output stream, prior to
     ///   hex encoding. Defaults to 0.
-    #[args("*", length = "32", seek = "0")]
+    #[args(length = "32", "*", seek = "0")]
     fn hexdigest<'p>(&self, py: Python<'p>, length: u64, seek: u64) -> PyResult<&'p PyString> {
         let bytes = output_bytes(&self.rust_hasher, length, seek)?;
         let hex = hex::encode(&bytes);

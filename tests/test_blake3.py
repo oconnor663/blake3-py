@@ -322,15 +322,24 @@ def test_keyword_only_arguments():
         assert False, "expected TypeError"
     except TypeError:
         pass
+
+    # The digest length is allowed to be positional or keyword.
+    blake3(b"").digest(32)
+    blake3(b"").digest(length=32)
+    blake3(b"").hexdigest(32)
+    blake3(b"").hexdigest(length=32)
+    # But the seek parameter is keyword-only.
+    blake3(b"").digest(32, seek=0)
+    blake3(b"").digest(length=32, seek=0)
+    blake3(b"").hexdigest(32, seek=0)
+    blake3(b"").hexdigest(length=32, seek=0)
     try:
-        # Passing the length as a positional argument should fail.
-        blake3(b"").digest(32)
+        blake3(b"").digest(32, 0)
         assert False, "expected TypeError"
     except TypeError:
         pass
     try:
-        # Passing the length as a positional argument should fail.
-        blake3(b"").hexdigest(32)
+        blake3(b"").hexdigest(32, 0)
         assert False, "expected TypeError"
     except TypeError:
         pass
