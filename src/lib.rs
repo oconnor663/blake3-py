@@ -286,7 +286,7 @@ impl Blake3Class {
         Ok(())
     }
 
-    /// Return a copy (“clone”) of the hash object. This can be used to
+    /// Return a copy (“clone”) of the hasher. This can be used to
     /// efficiently compute the digests of data sharing a common initial
     /// substring.
     ///
@@ -296,6 +296,19 @@ impl Blake3Class {
     /// instance.
     fn copy(&self) -> PyResult<Blake3Class> {
         Ok(self.clone())
+    }
+
+    /// Reset the hasher to its initial empty state. If the hasher contains
+    /// an internal threadpool (as it currently does if `max_threads` is
+    /// greater than 1), resetting the hasher lets you reuse that pool.
+    /// Note that if any input bytes were supplied in the original
+    /// construction of the hasher, those bytes are *not* replayed.
+    ///
+    /// The multithreading warning attached to the `update` method applies
+    /// here. It is not safe to call this method while another thread might
+    /// be calling `update` on the same instance.
+    fn reset(&mut self) {
+        self.rust_hasher.reset();
     }
 
     /// Finalize the hasher and return the resulting hash as bytes. This
