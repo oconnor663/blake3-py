@@ -27,14 +27,15 @@ assert hash1 == hash2
 print("The hash of 'hello world' is", blake3(b"hello world").hexdigest())
 
 # Use the keyed hashing mode, which takes a 32-byte key.
-zero_key = b"\0" * 32
+import secrets
+random_key = secrets.token_bytes(32)
 message = b"a message to authenticate"
-mac = blake3(message, key=zero_key).digest()
+mac = blake3(message, key=random_key).digest()
 
 # Use the key derivation mode, which takes a context string. Context strings
 # should be hardcoded, globally unique, and application-specific.
 context = "blake3-py 2020-03-04 11:13:10 example context"
-key_material = b"some super secret key material"
+key_material = b"usually at least 32 random bytes, not a password"
 derived_key = blake3(key_material, derive_key_context=context).digest()
 
 # Extendable output. The default digest size is 32 bytes.

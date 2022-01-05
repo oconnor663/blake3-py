@@ -140,7 +140,7 @@ fn update_with_max_threads(hasher: &mut blake3::Hasher, input: &[u8], num_thread
     read_guard
         .get(&num_threads)
         .unwrap()
-        .install(|| hasher.update_with_join::<blake3::join::RayonJoin>(input));
+        .install(|| hasher.update_rayon(input));
 }
 
 /// Python bindings for the official Rust implementation of BLAKE3
@@ -215,7 +215,7 @@ fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
                         update_with_max_threads(&mut self.rust_hasher, slice, max_threads);
                     } else {
                         // On the default Rayon pool.
-                        hasher.update_with_join::<blake3::join::RayonJoin>(slice);
+                        hasher.update_rayon(slice);
                     }
                 } else {
                     // Single threaded.

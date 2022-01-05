@@ -13,6 +13,8 @@ import subprocess
 HERE = Path(__file__).parent
 ROOT = HERE / ".."
 
+# We don't set --target here, but CI sets CARGO_BUILD_TARGET, which has the
+# same effect.
 subprocess.run(["cargo", "build", "--release"], check=True, cwd=str(ROOT))
 
 if platform.system() == "Windows":

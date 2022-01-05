@@ -19,11 +19,11 @@ ROOT = Path(__file__).parent.parent.parent
 # for consistency.
 if platform.system() == "Linux":
     version_path_components = {
-        (3, 5): "cp35-cp35m",
         (3, 6): "cp36-cp36m",
         (3, 7): "cp37-cp37m",
         (3, 8): "cp38-cp38",
         (3, 9): "cp39-cp39",
+        (3, 10): "cp310-cp310",
         # This list needs to be kept in sync with push.yml and tag.yml.
     }
     version_component = version_path_components[sys.version_info[:2]]
@@ -33,8 +33,8 @@ if platform.system() == "Linux":
         "docker",
         "run",
         "--rm",
-        "-v",
-        os.getcwd() + ":/io",
+        "--volume=" + os.getcwd() + ":/io",
+        "--env=BLAKE3_CI=1", # don't allow fallbacks for missing AVX-512 support
         "konstin2/maturin",
         "build",
         "--release",
