@@ -44,40 +44,41 @@ def test_vectors():
 
         # default hash
         assert hash_bytes == blake3(input_bytes).digest()
-        assert extended_hash_bytes == blake3(input_bytes).digest(
-            length=extended_len)
-        assert extended_hash_hex == blake3(input_bytes).hexdigest(
-            length=extended_len)
+        assert extended_hash_bytes == blake3(input_bytes).digest(length=extended_len)
+        assert extended_hash_hex == blake3(input_bytes).hexdigest(length=extended_len)
         incremental_hash = blake3()
-        incremental_hash.update(input_bytes[:input_len // 2])
-        incremental_hash.update(input_bytes[input_len // 2:])
+        incremental_hash.update(input_bytes[: input_len // 2])
+        incremental_hash.update(input_bytes[input_len // 2 :])
         assert hash_bytes == incremental_hash.digest()
 
         # keyed hash
         key = VECTORS["key"].encode()
         assert keyed_hash_bytes == blake3(input_bytes, key=key).digest()
-        assert extended_keyed_hash_bytes == blake3(
-            input_bytes, key=key).digest(length=extended_len)
-        assert extended_keyed_hash_hex == blake3(
-            input_bytes, key=key).hexdigest(length=extended_len)
+        assert extended_keyed_hash_bytes == blake3(input_bytes, key=key).digest(
+            length=extended_len
+        )
+        assert extended_keyed_hash_hex == blake3(input_bytes, key=key).hexdigest(
+            length=extended_len
+        )
         incremental_keyed_hash = blake3(key=key)
-        incremental_keyed_hash.update(input_bytes[:input_len // 2])
-        incremental_keyed_hash.update(input_bytes[input_len // 2:])
+        incremental_keyed_hash.update(input_bytes[: input_len // 2])
+        incremental_keyed_hash.update(input_bytes[input_len // 2 :])
         assert keyed_hash_bytes == incremental_keyed_hash.digest()
 
         # derive key
         context = "BLAKE3 2019-12-27 16:29:52 test vectors context"
-        assert derive_key_bytes == blake3(input_bytes,
-                                          derive_key_context=context).digest()
+        assert (
+            derive_key_bytes == blake3(input_bytes, derive_key_context=context).digest()
+        )
         assert extended_derive_key_bytes == blake3(
-            input_bytes,
-            derive_key_context=context).digest(length=extended_len)
+            input_bytes, derive_key_context=context
+        ).digest(length=extended_len)
         assert extended_derive_key_hex == blake3(
-            input_bytes,
-            derive_key_context=context).hexdigest(length=extended_len)
+            input_bytes, derive_key_context=context
+        ).hexdigest(length=extended_len)
         incremental_derive_key = blake3(derive_key_context=context)
-        incremental_derive_key.update(input_bytes[:input_len // 2])
-        incremental_derive_key.update(input_bytes[input_len // 2:])
+        incremental_derive_key.update(input_bytes[: input_len // 2])
+        incremental_derive_key.update(input_bytes[input_len // 2 :])
         assert derive_key_bytes == incremental_derive_key.digest()
 
 
@@ -102,8 +103,7 @@ def test_buffer_types():
     incremental.update(memoryview(array.array("B", b"six")))
     incremental.update(array.array("b", b"seven"))
     incremental.update(memoryview(array.array("b", b"eight")))
-    assert incremental.digest() == blake3(
-        b"onetwothreefourfivesixseveneight").digest()
+    assert incremental.digest() == blake3(b"onetwothreefourfivesixseveneight").digest()
 
 
 def test_key_types():
@@ -135,9 +135,7 @@ def test_int_array_fails():
 
 def test_strided_array_fails():
     unstrided = numpy.array([1, 2, 3, 4], numpy.uint8)
-    strided = numpy.lib.stride_tricks.as_strided(unstrided,
-                                                 shape=[2],
-                                                 strides=[2])
+    strided = numpy.lib.stride_tricks.as_strided(unstrided, shape=[2], strides=[2])
     assert bytes(strided) == bytes([1, 3])
     # Unstrided works fine.
     blake3(unstrided)
@@ -167,13 +165,17 @@ def test_constants():
 
 
 def test_example_dot_py():
-    hello_hash = \
-        "d74981efa70a0c880b8d8c1985d075dbcbf679b99a5f9914e5aaf96b831a9e24"
-    output = subprocess.run(
-        [sys.executable, str(HERE / "example.py")],
-        check=True,
-        input=b"hello world",
-        stdout=subprocess.PIPE).stdout.decode().strip()
+    hello_hash = "d74981efa70a0c880b8d8c1985d075dbcbf679b99a5f9914e5aaf96b831a9e24"
+    output = (
+        subprocess.run(
+            [sys.executable, str(HERE / "example.py")],
+            check=True,
+            input=b"hello world",
+            stdout=subprocess.PIPE,
+        )
+        .stdout.decode()
+        .strip()
+    )
     assert output == hello_hash
 
 
@@ -186,7 +188,7 @@ def test_xof():
 
 
 def test_max_threads():
-    b = make_input(10**6)
+    b = make_input(10 ** 6)
     expected = blake3(b).digest()
     assert expected == blake3(b, max_threads=2).digest()
     incremental = blake3()
@@ -210,8 +212,8 @@ def test_name():
 
 
 def test_copy_basic():
-    b = make_input(10**6)
-    b2 = make_input(10**6)
+    b = make_input(10 ** 6)
+    b2 = make_input(10 ** 6)
     h1 = blake3(b)
     expected = h1.digest()
     h2 = h1.copy()
@@ -225,7 +227,7 @@ def test_copy_basic():
 
 def test_copy_with_threads():
     """This test is somewhat redundant and takes a belt-and-suspenders approach. If the rest
-    of the tests pass but this test fails, something *very* weird is going on. """
+    of the tests pass but this test fails, something *very* weird is going on."""
     b = make_input(10 ** 6)
     b2 = make_input(10 ** 6)
     b3 = make_input(10 ** 6)
@@ -245,7 +247,9 @@ def test_copy_with_threads():
     assert expected2 == h2.digest(), "Update state of copy diverged from expected state"
 
     h2.update(b3)
-    assert h2.digest() == h3.digest(), "Update state of copy diverged from expected state"
+    assert (
+        h2.digest() == h3.digest()
+    ), "Update state of copy diverged from expected state"
 
 
 def test_version():
