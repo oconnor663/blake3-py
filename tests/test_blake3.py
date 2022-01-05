@@ -298,3 +298,39 @@ def test_invalid_max_threads():
         pass
     else:
         assert False, "expected a ValueError"
+
+
+def test_positional_only_arguments():
+    try:
+        # Passing the data as a keyword argument should fail.
+        blake3(data=b"")
+        assert False, "expected TypeError"
+    except TypeError:
+        pass
+    try:
+        # Passing the data as a keyword argument should fail.
+        blake3().update(data=b"")
+        assert False, "expected TypeError"
+    except TypeError:
+        pass
+
+
+def test_keyword_only_arguments():
+    try:
+        # Passing the key as a positional argument should fail.
+        blake3(b"", b"\0" * 32)
+        assert False, "expected TypeError"
+    except TypeError:
+        pass
+    try:
+        # Passing the length as a positional argument should fail.
+        blake3(b"").digest(32)
+        assert False, "expected TypeError"
+    except TypeError:
+        pass
+    try:
+        # Passing the length as a positional argument should fail.
+        blake3(b"").hexdigest(32)
+        assert False, "expected TypeError"
+    except TypeError:
+        pass

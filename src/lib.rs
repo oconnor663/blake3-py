@@ -192,12 +192,20 @@ impl Blake3Class {
     const AUTO: isize = -1;
 
     #[new]
+    #[args(
+        data,
+        "/",
+        "*",
+        key = "None",
+        derive_key_context = "None",
+        max_threads = "1"
+    )]
     fn new(
         py: Python,
         data: Option<&PyAny>,
         key: Option<&PyAny>,
         derive_key_context: Option<&str>,
-        max_threads: Option<isize>,
+        max_threads: isize,
     ) -> PyResult<Blake3Class> {
         let rust_hasher = match (key, derive_key_context) {
             // The default, unkeyed hash function.
@@ -230,9 +238,9 @@ impl Blake3Class {
             }
         };
         let threading_mode = match max_threads {
-            None | Some(1) => ThreadingMode::Single,
-            Some(Self::AUTO) => ThreadingMode::Auto,
-            Some(n) if n > 1 => ThreadingMode::Pool {
+            1 => ThreadingMode::Single,
+            Self::AUTO => ThreadingMode::Auto,
+            n if n > 1 => ThreadingMode::Pool {
                 max_threads: n as usize,
                 pool: new_thread_pool(n as usize),
             },
@@ -261,6 +269,7 @@ impl Blake3Class {
     ///
     /// Positional arguments:
     /// - `data` (required): The input bytes.
+    #[args(data, "/")]
     fn update(&mut self, py: Python, data: &PyAny) -> PyResult<()> {
         // Get a slice that's not tied to the `py` lifetime.
         // XXX: The safety situation here is a bit complicated. See all the
@@ -292,6 +301,7 @@ impl Blake3Class {
     /// to the `update` method applies here. It is not safe to call this
     /// method while another thread might be calling `update` on the same
     /// instance.
+    #[args()]
     fn copy(&self) -> PyResult<Blake3Class> {
         Ok(self.clone())
     }
@@ -305,6 +315,7 @@ impl Blake3Class {
     /// The multithreading warning attached to the `update` method applies
     /// here. It is not safe to call this method while another thread might
     /// be calling `update` on the same instance.
+    #[args()]
     fn reset(&mut self) {
         self.rust_hasher.reset();
     }
@@ -324,17 +335,9 @@ impl Blake3Class {
     ///   prefixes of longer ones. Defaults to 32.
     /// - `seek`: The starting byte position in the output stream. Defaults
     ///   to 0.
-    fn digest<'p>(
-        &self,
-        py: Python<'p>,
-        length: Option<u64>,
-        seek: Option<u64>,
-    ) -> PyResult<&'p PyBytes> {
-        let bytes = output_bytes(
-            &self.rust_hasher,
-            length.unwrap_or(blake3::KEY_LEN as u64),
-            seek.unwrap_or(0),
-        )?;
+    #[args("*", length = "32", seek = "0")]
+    fn digest<'p>(&self, py: Python<'p>, length: u64, seek: u64) -> PyResult<&'p PyBytes> {
+        let bytes = output_bytes(&self.rust_hasher, length, seek)?;
         Ok(PyBytes::new(py, &bytes))
     }
 
@@ -354,17 +357,9 @@ impl Blake3Class {
     ///   that shorter outputs are prefixes of longer ones. Defaults to 32.
     /// - `seek`: The starting byte position in the output stream, prior to
     ///   hex encoding. Defaults to 0.
-    fn hexdigest<'p>(
-        &self,
-        py: Python<'p>,
-        length: Option<u64>,
-        seek: Option<u64>,
-    ) -> PyResult<&'p PyString> {
-        let bytes = output_bytes(
-            &self.rust_hasher,
-            length.unwrap_or(blake3::KEY_LEN as u64),
-            seek.unwrap_or(0),
-        )?;
+    #[args("*", length = "32", seek = "0")]
+    fn hexdigest<'p>(&self, py: Python<'p>, length: u64, seek: u64) -> PyResult<&'p PyString> {
+        let bytes = output_bytes(&self.rust_hasher, length, seek)?;
         let hex = hex::encode(&bytes);
         Ok(PyString::new(py, &hex))
     }
