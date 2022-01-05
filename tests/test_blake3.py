@@ -114,13 +114,19 @@ def test_key_types():
     assert expected == blake3(b"foo", key=memoryview(key)).digest()
 
 
-def test_short_key():
-    try:
-        blake3(b"foo", key=b"too short")
-    except ValueError:
-        pass
-    else:
-        assert False, "expected a key-too-short error"
+def test_invalid_key_lengths():
+    for key_length in range(0, 100):
+        key = b"\xff" * key_length
+        if key_length == blake3.key_size:
+            # This length works without throwing.
+            blake3(b"foo", key=key)
+        else:
+            # Other lengths throw.
+            try:
+                blake3(b"foo", key=key)
+                assert False, "should throw"
+            except ValueError:
+                pass
 
 
 def test_int_array_fails():
@@ -158,10 +164,18 @@ def test_string_fails():
 
 
 def test_constants():
-    b = blake3()
-    assert b.digest_size == 32
-    assert b.block_size == 64
-    assert b.key_size == 32
+    # These are class attributes, so they should work on the class itself and
+    # also on instances of the class.
+    assert blake3.name == "blake3"
+    assert blake3.digest_size == 32
+    assert blake3.block_size == 64
+    assert blake3.key_size == 32
+    assert blake3.AUTO == -1
+    assert blake3().name == "blake3"
+    assert blake3().digest_size == 32
+    assert blake3().block_size == 64
+    assert blake3().key_size == 32
+    assert blake3().AUTO == -1
 
 
 def test_example_dot_py():
