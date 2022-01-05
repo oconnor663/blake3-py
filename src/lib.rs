@@ -139,11 +139,9 @@ impl Clone for ThreadingMode {
 /// The interface is similar to `hashlib.blake2b` or `hashlib.md5` from the
 /// standard library.
 ///
-/// Positional arguments:
-/// - `data` (optional): Input bytes to hash. This is equivalent to calling
-///   `update` on the returned hasher.
-///
-/// Keyword arguments:
+/// Arguments:
+/// - `data`: Input bytes to hash. Setting this to non-None is equivalent
+///   to calling `update` on the returned hasher.
 /// - `key`: A 32-byte key. Setting this to non-None enables the BLAKE3
 ///   keyed hashing mode.
 /// - `derive_key_context`: A hardcoded, globally unique,
@@ -162,6 +160,9 @@ impl Clone for ThreadingMode {
 ///   multithreading.
 /// - `usedforsecurity`: Currently ignored. See the standard hashlib docs.
 #[pyclass(name = "blake3")]
+#[pyo3(
+    text_signature = "(data=b'', /, *, key=None, derive_key_context=None, max_threads=1, usedforsecurity=True)"
+)]
 #[derive(Clone)]
 struct Blake3Class {
     rust_hasher: blake3::Hasher,
@@ -272,9 +273,10 @@ impl Blake3Class {
     /// thing to do, and real world program almost never need to worry about
     /// this.
     ///
-    /// Positional arguments:
+    /// Arguments:
     /// - `data` (required): The input bytes.
     #[args(data, "/")]
+    #[pyo3(text_signature = "(data, /)")]
     fn update(&mut self, py: Python, data: &PyAny) -> PyResult<()> {
         // Get a slice that's not tied to the `py` lifetime.
         // XXX: The safety situation here is a bit complicated. See all the
@@ -307,6 +309,7 @@ impl Blake3Class {
     /// method while another thread might be calling `update` on the same
     /// instance.
     #[args()]
+    #[pyo3(text_signature = "()")]
     fn copy(&self) -> Blake3Class {
         self.clone()
     }
@@ -321,6 +324,7 @@ impl Blake3Class {
     /// here. It is not safe to call this method while another thread might
     /// be calling `update` on the same instance.
     #[args()]
+    #[pyo3(text_signature = "()")]
     fn reset(&mut self) {
         self.rust_hasher.reset();
     }
@@ -334,13 +338,14 @@ impl Blake3Class {
     /// method while another thread might be calling `update` on the same
     /// instance.
     ///
-    /// Keyword arguments:
+    /// Arguments:
     /// - `length`: The number of bytes in the final hash. BLAKE3 supports
     ///   any output length up to 2**64-1. Note that shorter outputs are
     ///   prefixes of longer ones. Defaults to 32.
     /// - `seek`: The starting byte position in the output stream. Defaults
     ///   to 0.
     #[args(length = "32", "*", seek = "0")]
+    #[pyo3(text_signature = "(length=32, *, seek=0)")]
     fn digest<'p>(&self, py: Python<'p>, length: u64, seek: u64) -> PyResult<&'p PyBytes> {
         let bytes = output_bytes(&self.rust_hasher, length, seek)?;
         Ok(PyBytes::new(py, &bytes))
@@ -356,13 +361,14 @@ impl Blake3Class {
     /// method while another thread might be calling `update` on the same
     /// instance.
     ///
-    /// Keyword arguments:
+    /// Arguments:
     /// - `length`: The number of bytes in the final hash, prior to hex
     ///   encoding. BLAKE3 supports any output length up to 2**64-1. Note
     ///   that shorter outputs are prefixes of longer ones. Defaults to 32.
     /// - `seek`: The starting byte position in the output stream, prior to
     ///   hex encoding. Defaults to 0.
     #[args(length = "32", "*", seek = "0")]
+    #[pyo3(text_signature = "(length=32, *, seek=0)")]
     fn hexdigest<'p>(&self, py: Python<'p>, length: u64, seek: u64) -> PyResult<&'p PyString> {
         let bytes = output_bytes(&self.rust_hasher, length, seek)?;
         let hex = hex::encode(&bytes);
