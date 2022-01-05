@@ -302,8 +302,8 @@ impl Blake3Class {
     /// method while another thread might be calling `update` on the same
     /// instance.
     #[args()]
-    fn copy(&self) -> PyResult<Blake3Class> {
-        Ok(self.clone())
+    fn copy(&self) -> Blake3Class {
+        self.clone()
     }
 
     /// Reset the hasher to its initial empty state. If the hasher contains
