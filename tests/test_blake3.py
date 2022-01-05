@@ -187,10 +187,19 @@ def test_xof():
         assert extended[i:] == blake3(b"foo").digest(length=100 - i, seek=i)
 
 
-def test_max_threads():
+def test_max_threads_value():
     b = make_input(10 ** 6)
     expected = blake3(b).digest()
     assert expected == blake3(b, max_threads=2).digest()
+    incremental = blake3()
+    incremental.update(b)
+    assert expected == incremental.digest()
+
+
+def test_max_threads_auto():
+    b = make_input(10 ** 6)
+    expected = blake3(b).digest()
+    assert expected == blake3(b, max_threads=blake3.AUTO).digest()
     incremental = blake3()
     incremental.update(b)
     assert expected == incremental.digest()
