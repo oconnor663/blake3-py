@@ -45,12 +45,12 @@ assert extended[75:100] == blake3(b"foo").digest(length=25, seek=75)
 
 # Hash a large input using multiple threads. Note that this can be slower for
 # inputs shorter than ~1 MB, and it's a good idea to benchmark it for your use
-# case on your platform. The `max_threads` argument limits the number of threads
-# used, and `multithreading` defaults to True when `max_threads` is set.
+# case on your platform.
 large_input = bytearray(1_000_000)
-hash3 = blake3(large_input, multithreading=True).digest()
-hash4 = blake3(large_input, max_threads=2).digest()
-assert hash3 == hash4 == blake3(large_input).digest()
+hash_single = blake3(large_input).digest()
+hash_two = blake3(large_input, max_threads=2).digest()
+hash_many = blake3(large_input, max_threads=blake3.AUTO).digest()
+assert hash_single == hash_two == hash_many
 
 # Copy a hasher that has already accepted some input.
 hasher1 = blake3(b"foo")
