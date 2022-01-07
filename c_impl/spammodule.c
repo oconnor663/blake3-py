@@ -2,13 +2,20 @@
 #include <Python.h>
 
 static PyObject *spam_system(PyObject *self, PyObject *args) {
-  const char *command;
-  int sts;
-
-  if (!PyArg_ParseTuple(args, "s", &command))
+  Py_buffer input;
+  if (!PyArg_ParseTuple(args, "y*", &input)) {
     return NULL;
-  sts = system(command);
-  return PyLong_FromLong(sts);
+  }
+  const char *prefix = "got: ";
+  char array[100] = {0x42};
+  if (input.len > (Py_ssize_t)(sizeof(array) - strlen(prefix))) {
+    PyErr_SetString(PyExc_ValueError, "input too long");
+    return NULL;
+  }
+  strcpy(array, prefix);
+  memcpy(array + strlen(prefix), input.buf, input.len);
+  PyObject *copy = Py_BuildValue("y#", array, strlen(prefix) + input.len);
+  return copy;
 }
 
 static PyMethodDef SpamMethods[] = {
