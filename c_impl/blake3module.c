@@ -127,10 +127,9 @@ static PyObject *Blake3_hexdigest(Blake3Object *self, PyObject *args,
 
 static PyMethodDef Blake3_methods[] = {
     {"update", (PyCFunction)Blake3_update, METH_VARARGS, "add input bytes"},
-    {"digest", (PyCFunctionWithKeywords)Blake3_digest,
-     METH_VARARGS | METH_KEYWORDS, "finalize the hash"},
-    {"hexdigest", (PyCFunctionWithKeywords)Blake3_hexdigest,
-     METH_VARARGS | METH_KEYWORDS,
+    {"digest", (PyCFunction)Blake3_digest, METH_VARARGS | METH_KEYWORDS,
+     "finalize the hash"},
+    {"hexdigest", (PyCFunction)Blake3_hexdigest, METH_VARARGS | METH_KEYWORDS,
      "finalize the hash and encode the result as hex"},
     {NULL, NULL, 0, NULL} // sentinel
 };
@@ -151,34 +150,11 @@ static PyTypeObject Blake3Type = {
 };
 // clang-format on
 
-static PyObject *blake3_hash(PyObject *self, PyObject *args) {
-  Py_buffer input;
-  if (!PyArg_ParseTuple(args, "y*", &input)) {
-    return NULL;
-  }
-  uint8_t output[BLAKE3_OUT_LEN];
-  blake3_hasher hasher;
-  blake3_hasher_init(&hasher);
-  blake3_hasher_update(&hasher, input.buf, input.len);
-  blake3_hasher_finalize(&hasher, output, BLAKE3_OUT_LEN);
-  // Convert the output to a bytes object.
-  PyObject *ret = Py_BuildValue("y#", output, BLAKE3_OUT_LEN);
-  // The input buffer will be permanently locked if we don't release it.
-  PyBuffer_Release(&input);
-  return ret;
-}
-
-static PyMethodDef Blake3ModuleMethods[] = {
-    {"hash", blake3_hash, METH_VARARGS, "Hash some bytes."},
-    {NULL, NULL, 0, NULL} /* Sentinel */
-};
-
 static struct PyModuleDef blake3module = {
     PyModuleDef_HEAD_INIT,
     .m_name = "blake3",
     .m_doc = "experimental bindings for the BLAKE3 C implementation",
     .m_size = -1,
-    .m_methods = Blake3ModuleMethods,
 };
 
 PyMODINIT_FUNC PyInit_blake3(void) {
