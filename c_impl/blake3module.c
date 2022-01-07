@@ -5,6 +5,8 @@
 
 #include "blake3.h"
 
+#define AUTO -1
+
 // clang-format gets confused by the (correct, documented) missing semicolon
 // after PyObject_HEAD.
 // clang-format off
@@ -23,20 +25,101 @@ static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
       "usedforsecurity", // currently ignored
       NULL,
   };
-  Py_buffer data;
-  Py_buffer key;
-  Py_buffer derive_key_context;
-  Py_ssize_t max_threads;
-  bool usedforsecurity;
+  Py_buffer data = {0};
+  Py_buffer key = {0};
+  const char *derive_key_context = NULL;
+  Py_ssize_t max_threads = 1;
+  bool usedforsecurity = true;
 
-  if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OOi", kwlist, &data, &key,
+  int ret = -1;
+
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "|y*$y*snp", kwlist, &data, &key,
                                    &derive_key_context, &max_threads,
                                    &usedforsecurity)) {
-    return -1;
+    // nothing to release
+    return ret;
   }
 
-  return 0;
+  if (key.buf != NULL && derive_key_context != NULL) {
+    PyErr_SetString(PyExc_ValueError,
+                    "key and derive_key_context can't be used together");
+    goto exit;
+  }
+
+  if (key.buf != NULL && key.len != BLAKE3_KEY_LEN) {
+    PyErr_SetString(PyExc_ValueError, "keys must be 32 bytes");
+    goto exit;
+  }
+
+  if (max_threads < 1 && max_threads != AUTO) {
+    PyErr_SetString(PyExc_ValueError, "invalid value for max_threads");
+    goto exit;
+  }
+
+  if (key.buf != NULL) {
+    blake3_hasher_init_keyed(&self->hasher, key.buf);
+  } else if (derive_key_context != NULL) {
+    blake3_hasher_init_derive_key(&self->hasher, derive_key_context);
+  } else {
+    blake3_hasher_init(&self->hasher);
+  }
+
+  if (data.buf != NULL) {
+    blake3_hasher_update(&self->hasher, data.buf, data.len);
+  }
+
+  // success
+  ret = 0;
+
+exit:
+  if (data.buf != NULL) {
+    PyBuffer_Release(&data);
+  }
+  if (key.buf != NULL) {
+    PyBuffer_Release(&key);
+  }
+  return ret;
 }
+
+static PyObject *Blake3_update(Blake3Object *self, PyObject *args) {
+  Py_buffer data = {0};
+  if (!PyArg_ParseTuple(args, "y*", &data)) {
+    return NULL;
+  }
+  blake3_hasher_update(&self->hasher, data.buf, data.len);
+  PyBuffer_Release(&data);
+  Py_RETURN_NONE;
+}
+
+static PyObject *Blake3_digest(Blake3Object *self, PyObject *args,
+                               PyObject *kwds) {
+  static char *kwlist[] = {
+      "length",
+      "seek",
+      NULL,
+  };
+  Py_ssize_t length = BLAKE3_OUT_LEN;
+  unsigned long long seek = 0;
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "|n$K", kwlist, &length,
+                                   &seek)) {
+    return NULL;
+  }
+  // Create a bytes object as per https://stackoverflow.com/a/55876332/823869.
+  PyObject *output = PyBytes_FromStringAndSize(NULL, length);
+  if (output == NULL) {
+    return NULL;
+  }
+  blake3_hasher_finalize_seek(&self->hasher, seek,
+                              (uint8_t *)PyBytes_AsString(output), length);
+  return output;
+}
+
+static PyMethodDef Blake3_methods[] = {
+    {"update", (PyCFunction)Blake3_update, METH_VARARGS, "add input bytes"},
+    {"digest", (PyCFunctionWithKeywords)Blake3_digest,
+     METH_VARARGS | METH_KEYWORDS, "finalize the hash"},
+    {NULL, NULL, 0, NULL} // sentinel
+};
 
 // clang-format gets confused by the (correct, documented) missing semicolon
 // after PyObject_HEAD_INIT.
@@ -50,6 +133,7 @@ static PyTypeObject Blake3Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = PyType_GenericNew,
     .tp_init = (initproc) Blake3_init,
+    .tp_methods = Blake3_methods,
 };
 // clang-format on
 
@@ -70,7 +154,7 @@ static PyObject *blake3_hash(PyObject *self, PyObject *args) {
   return ret;
 }
 
-static PyMethodDef Blake3Methods[] = {
+static PyMethodDef Blake3ModuleMethods[] = {
     {"hash", blake3_hash, METH_VARARGS, "Hash some bytes."},
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
@@ -80,7 +164,7 @@ static struct PyModuleDef blake3module = {
     .m_name = "blake3",
     .m_doc = "experimental bindings for the BLAKE3 C implementation",
     .m_size = -1,
-    .m_methods = Blake3Methods,
+    .m_methods = Blake3ModuleMethods,
 };
 
 PyMODINIT_FUNC PyInit_blake3(void) {
