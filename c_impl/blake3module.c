@@ -114,10 +114,24 @@ static PyObject *Blake3_digest(Blake3Object *self, PyObject *args,
   return output;
 }
 
+static PyObject *Blake3_hexdigest(Blake3Object *self, PyObject *args,
+                                  PyObject *kwds) {
+  PyObject *bytes = Blake3_digest(self, args, kwds);
+  if (bytes == NULL) {
+    return NULL;
+  }
+  PyObject *hex = PyObject_CallMethod(bytes, "hex", NULL);
+  Py_DECREF(bytes);
+  return hex;
+}
+
 static PyMethodDef Blake3_methods[] = {
     {"update", (PyCFunction)Blake3_update, METH_VARARGS, "add input bytes"},
     {"digest", (PyCFunctionWithKeywords)Blake3_digest,
      METH_VARARGS | METH_KEYWORDS, "finalize the hash"},
+    {"hexdigest", (PyCFunctionWithKeywords)Blake3_hexdigest,
+     METH_VARARGS | METH_KEYWORDS,
+     "finalize the hash and encode the result as hex"},
     {NULL, NULL, 0, NULL} // sentinel
 };
 
