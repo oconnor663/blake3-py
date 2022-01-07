@@ -125,12 +125,25 @@ static PyObject *Blake3_hexdigest(Blake3Object *self, PyObject *args,
   return hex;
 }
 
+// Implemented below, because it needs to refer to Blake3Type.
+static PyObject *Blake3_copy(Blake3Object *self, PyObject *args);
+
+static PyObject *Blake3_reset(Blake3Object *self, PyObject *args) {
+  blake3_hasher_reset(&self->hasher);
+  Py_RETURN_NONE;
+}
+
 static PyMethodDef Blake3_methods[] = {
     {"update", (PyCFunction)Blake3_update, METH_VARARGS, "add input bytes"},
     {"digest", (PyCFunction)Blake3_digest, METH_VARARGS | METH_KEYWORDS,
      "finalize the hash"},
     {"hexdigest", (PyCFunction)Blake3_hexdigest, METH_VARARGS | METH_KEYWORDS,
      "finalize the hash and encode the result as hex"},
+    {"update", (PyCFunction)Blake3_update, METH_VARARGS, "add input bytes"},
+    {"copy", (PyCFunction)Blake3_copy, METH_VARARGS,
+     "make a copy of this hasher"},
+    {"reset", (PyCFunction)Blake3_reset, METH_VARARGS,
+     "reset this hasher to its initial state"},
     {NULL, NULL, 0, NULL} // sentinel
 };
 
@@ -149,6 +162,16 @@ static PyTypeObject Blake3Type = {
     .tp_methods = Blake3_methods,
 };
 // clang-format on
+
+// Declared above but implemented here, because it needs to refer to Blake3Type.
+static PyObject *Blake3_copy(Blake3Object *self, PyObject *args) {
+  Blake3Object *copy = PyObject_New(Blake3Object, &Blake3Type);
+  if (copy == NULL) {
+    return NULL;
+  }
+  memcpy(&copy->hasher, &self->hasher, sizeof(blake3_hasher));
+  return (PyObject *)copy;
+}
 
 static struct PyModuleDef blake3module = {
     PyModuleDef_HEAD_INIT,
