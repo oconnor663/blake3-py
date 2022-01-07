@@ -348,3 +348,14 @@ def test_keyword_only_arguments():
 def test_usedforsecurity_ignored():
     blake3(usedforsecurity=True)
     blake3(usedforsecurity=False)
+
+
+def test_context_must_be_str():
+    # string works
+    blake3(derive_key_context="foo")
+    try:
+        # bytes fails
+        blake3(derive_key_context=b"foo")
+        assert False, "should fail"
+    except TypeError:
+        pass
