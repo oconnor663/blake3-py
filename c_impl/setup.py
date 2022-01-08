@@ -41,6 +41,20 @@ def is_windows():
     return sys.platform.startswith("win32")
 
 
+def is_x86_64():
+    # Alas platform.machine() gives different answers on Windows and Linux.
+    return platform.machine().lower() in ("x86_64", "amd64")
+
+
+def is_x86_32():
+    # Not sure what this set should be, just matching upstream build.rs.
+    return platform.machine().lower() in ("i386", "i586", "i686")
+
+
+def is_aarch64():
+    return platform.machine().lower() == "aarch64"
+
+
 def force_intrinsics():
     return os.environ.get("FORCE_INTRINSICS") == "1"
 
@@ -67,7 +81,7 @@ def prepare_extension():
     ]
     target = platform.machine()
     extra_objects = []
-    if target == "x86_64" and not force_intrinsics():
+    if is_x86_64() and not force_intrinsics():
         # TODO: Do we ever want to use the Windows GNU assembly files?
         if is_windows():
             print("including x86-64 MSVC assembly")
@@ -75,10 +89,10 @@ def prepare_extension():
         else:
             print("including x86-64 Unix assembly")
             extra_objects = unix_asm_files
-    elif target in ("i386", "i686") or (target == "x86_64" and force_intrinsics()):
+    elif is_x86_32() or (is_x86_64() and force_intrinsics()):
         print("building x86 intrinsics")
         extra_objects = compile_x86_intrinsics()
-    elif target == "aarch64":
+    elif is_aarch64():
         print("including NEON intrinsics")
         # Compiling NEON intrinsics doesn't require extra flags on AArch64.
         sources.append("vendor/blake3_neon.c")
