@@ -212,29 +212,89 @@ static struct PyModuleDef blake3module = {
 };
 
 PyMODINIT_FUNC PyInit_blake3(void) {
-  PyObject *m;
+  PyObject *attr_dict = NULL;
+  PyObject *name_str = NULL;
+  PyObject *block_size_int = NULL;
+  PyObject *digest_size_int = NULL;
+  PyObject *key_size_int = NULL;
+  PyObject *auto_int = NULL;
+  PyObject *module = NULL;
+
+  PyObject *ret = NULL;
+
+  // Feedback needed: Handling all these possible allocation failures is
+  // annoying and error-prone. Is this really necessary?
+  attr_dict = PyDict_New();
+  if (attr_dict == NULL) {
+    goto exit;
+  }
+  name_str = PyUnicode_FromString("blake3");
+  if (name_str == NULL) {
+    goto exit;
+  }
+  if (PyDict_SetItemString(attr_dict, "name", name_str) < 0) {
+    goto exit;
+  }
+  block_size_int = PyLong_FromLong(BLAKE3_BLOCK_LEN);
+  if (block_size_int == NULL) {
+    goto exit;
+  }
+  if (PyDict_SetItemString(attr_dict, "block_size", block_size_int) < 0) {
+    goto exit;
+  }
+  digest_size_int = PyLong_FromLong(BLAKE3_OUT_LEN);
+  if (digest_size_int == NULL) {
+    goto exit;
+  }
+  if (PyDict_SetItemString(attr_dict, "digest_size", digest_size_int) < 0) {
+    goto exit;
+  }
+  key_size_int = PyLong_FromLong(BLAKE3_KEY_LEN);
+  if (key_size_int == NULL) {
+    goto exit;
+  }
+  if (PyDict_SetItemString(attr_dict, "key_size", key_size_int) < 0) {
+    goto exit;
+  }
+  auto_int = PyLong_FromLong(AUTO);
+  if (auto_int == NULL) {
+    goto exit;
+  }
+  if (PyDict_SetItemString(attr_dict, "AUTO", auto_int) < 0) {
+    goto exit;
+  }
+
+  Blake3Type.tp_dict = attr_dict;
+  attr_dict = NULL; // pass the refcount
+
   if (PyType_Ready(&Blake3Type) < 0) {
-    return NULL;
+    goto exit;
   }
 
-  m = PyModule_Create(&blake3module);
-  if (m == NULL) {
-    return NULL;
+  module = PyModule_Create(&blake3module);
+  if (module == NULL) {
+    goto exit;
   }
 
-  // This refcount handling follows the example from
-  // https://docs.python.org/3/extending/newtypes_tutorial.html.
-  Py_INCREF(&Blake3Type);
-  if (PyModule_AddObject(m, "blake3", (PyObject *)&Blake3Type) < 0) {
-    Py_DECREF(&Blake3Type);
-    Py_DECREF(m);
-    return NULL;
+  if (PyModule_AddObjectRef(module, "blake3", (PyObject *)&Blake3Type) < 0) {
+    goto exit;
   }
 
-  if (PyModule_AddStringConstant(m, "__version__", "0.0.0") < 0) {
-    Py_DECREF(m);
-    return NULL;
+  if (PyModule_AddStringConstant(module, "__version__", "0.0.0") < 0) {
+    goto exit;
   }
 
-  return m;
+  // success
+  ret = module;
+  module = NULL; // pass the refcount
+
+exit:
+  Py_XDECREF(attr_dict);
+  Py_XDECREF(name_str);
+  Py_XDECREF(block_size_int);
+  Py_XDECREF(digest_size_int);
+  Py_XDECREF(key_size_int);
+  Py_XDECREF(auto_int);
+  Py_XDECREF(module);
+  return ret;
 }
