@@ -276,8 +276,9 @@ def test_copy_with_threads():
 
 
 def test_version():
-    # Just sanity check that it's a version string. No need to try to go out of
-    # our way to parse Cargo.toml.
+    # Just sanity check that it's a version string. Don't assert the specific
+    # version, both because we don't want to bother with parsing Cargo.toml,
+    # and because these tests might be reused to test C bindings.
     assert type(__version__) is str
     assert len(__version__.split(".")) == 3
 
