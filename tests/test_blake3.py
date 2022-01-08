@@ -384,3 +384,18 @@ def test_buffers_released():
     # These extensions will fail if a buffer isn't properly released.
     key.extend(b"foo")
     message.extend(b"foo")
+
+
+def test_reset():
+    hasher = blake3()
+    hash1 = hasher.digest()
+    hasher.update(b"foo")
+    hash2 = hasher.digest()
+    hasher.reset()
+    hash3 = hasher.digest()
+    hasher.update(b"foo")
+    hash4 = hasher.digest()
+
+    assert hash1 != hash2
+    assert hash1 == hash3
+    assert hash2 == hash4
