@@ -15,10 +15,10 @@ unix_asm_files = [
 ]
 
 windows_msvc_asm_files = [
-    "vendor/blake3_sse2_x86-64_windows_msvc.S",
-    "vendor/blake3_sse41_x86-64_windows_msvc.S",
-    "vendor/blake3_avx2_x86-64_windows_msvc.S",
-    "vendor/blake3_avx512_x86-64_windows_msvc.S",
+    "vendor/blake3_sse2_x86-64_windows_msvc.asm",
+    "vendor/blake3_sse41_x86-64_windows_msvc.asm",
+    "vendor/blake3_avx2_x86-64_windows_msvc.asm",
+    "vendor/blake3_avx512_x86-64_windows_msvc.asm",
 ]
 
 windows_gnu_asm_files = [
