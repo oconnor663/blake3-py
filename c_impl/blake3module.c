@@ -16,6 +16,20 @@ typedef struct {
 } Blake3Object;
 // clang-format on
 
+static void release_if_acquired(Py_buffer *buf) {
+  if (buf != NULL && buf->obj != NULL) {
+    PyBuffer_Release(buf);
+  }
+}
+
+static bool weird_buffer(Py_buffer *buf) {
+  if (buf != NULL && buf->obj != NULL && buf->itemsize != 1) {
+    PyErr_SetString(PyExc_ValueError, "buffer elements must be bytes");
+    return true;
+  }
+  return false;
+}
+
 static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
   static char *kwlist[] = {
       "", // data, positional-only
@@ -36,17 +50,24 @@ static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "|y*$y*snp", kwlist, &data, &key,
                                    &derive_key_context, &max_threads,
                                    &usedforsecurity)) {
-    // nothing to release
-    return ret;
+    goto exit;
   }
 
-  if (key.buf != NULL && derive_key_context != NULL) {
+  if (weird_buffer(&data)) {
+    goto exit;
+  }
+
+  if (weird_buffer(&key)) {
+    goto exit;
+  }
+
+  if (key.obj != NULL && derive_key_context != NULL) {
     PyErr_SetString(PyExc_ValueError,
                     "key and derive_key_context can't be used together");
     goto exit;
   }
 
-  if (key.buf != NULL && key.len != BLAKE3_KEY_LEN) {
+  if (key.obj != NULL && key.len != BLAKE3_KEY_LEN) {
     PyErr_SetString(PyExc_ValueError, "keys must be 32 bytes");
     goto exit;
   }
@@ -56,7 +77,7 @@ static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
     goto exit;
   }
 
-  if (key.buf != NULL) {
+  if (key.obj != NULL) {
     blake3_hasher_init_keyed(&self->hasher, key.buf);
   } else if (derive_key_context != NULL) {
     blake3_hasher_init_derive_key(&self->hasher, derive_key_context);
@@ -64,7 +85,7 @@ static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
     blake3_hasher_init(&self->hasher);
   }
 
-  if (data.buf != NULL) {
+  if (data.obj != NULL) {
     blake3_hasher_update(&self->hasher, data.buf, data.len);
   }
 
@@ -72,23 +93,33 @@ static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
   ret = 0;
 
 exit:
-  if (data.buf != NULL) {
-    PyBuffer_Release(&data);
-  }
-  if (key.buf != NULL) {
-    PyBuffer_Release(&key);
-  }
+  release_if_acquired(&data);
+  release_if_acquired(&key);
   return ret;
 }
 
 static PyObject *Blake3_update(Blake3Object *self, PyObject *args) {
   Py_buffer data = {0};
+
+  PyObject *ret = NULL;
+
   if (!PyArg_ParseTuple(args, "y*", &data)) {
-    return NULL;
+    goto exit;
   }
+
+  if (weird_buffer(&data)) {
+    goto exit;
+  }
+
   blake3_hasher_update(&self->hasher, data.buf, data.len);
-  PyBuffer_Release(&data);
-  Py_RETURN_NONE;
+
+  // success
+  Py_INCREF(Py_None);
+  ret = Py_None;
+
+exit:
+  release_if_acquired(&data);
+  return ret;
 }
 
 static PyObject *Blake3_digest(Blake3Object *self, PyObject *args,

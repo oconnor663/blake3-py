@@ -133,7 +133,16 @@ def test_int_array_fails():
     try:
         # "i" represents the int type, which is larger than a char.
         blake3(array.array("i"))
-    except BufferError:
+    # We get BufferError in Rust and ValueError in C.
+    except (BufferError, ValueError):
+        pass
+    else:
+        assert False, "expected a buffer error"
+
+    # The same thing, but with the update method.
+    try:
+        blake3().update(array.array("i"))
+    except (BufferError, ValueError):
         pass
     else:
         assert False, "expected a buffer error"
@@ -148,7 +157,8 @@ def test_strided_array_fails():
     try:
         # But strided fails.
         blake3(strided)
-    except BufferError:
+    # We get BufferError in Rust and ValueError in C.
+    except (BufferError, ValueError):
         pass
     else:
         assert False, "expected a buffer error"
@@ -360,3 +370,17 @@ def test_context_must_be_str():
         assert False, "should fail"
     except TypeError:
         pass
+
+
+def test_buffers_released():
+    key = bytearray(32)
+    message = bytearray(32)
+
+    # These operations acquire 3 different Py_Buffer handles. We're testing
+    # that they get released properly.
+    hasher = blake3(message, key=key)
+    hasher.update(message)
+
+    # These extensions will fail if a buffer isn't properly released.
+    key.extend(b"foo")
+    message.extend(b"foo")
