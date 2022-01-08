@@ -1,5 +1,6 @@
 from collections import namedtuple
 import os
+import platform
 import setuptools
 import sys
 
@@ -27,28 +28,26 @@ windows_gnu_asm_files = [
     "vendor/blake3_avx512_x86-64_windows_gnu.S",
 ]
 
-IntrinsicsFile = namedtuple("IntrinsicsFile", ["path", "unix_flags", "win_flags"])
-intrinsics_files = [
-    IntrinsicsFile("vendor/blake3_sse2.c", ["-msse2"], []),
-    IntrinsicsFile("vendor/blake3_sse41.c", ["-msse4.1"], []),
-    IntrinsicsFile("vendor/blake3_avx2.c", ["-mavx2"], ["/arch:AVX2"]),
-    IntrinsicsFile(
-        "vendor/blake3_avx512.c", ["-mavx512f", "-mavx512vl"], ["/arch:AVX512"]
-    ),
+# path, unix_flags, win_flags
+x86_intrinsics_files = [
+    ("vendor/blake3_sse2.c", ["-msse2"], []),
+    ("vendor/blake3_sse41.c", ["-msse4.1"], []),
+    ("vendor/blake3_avx2.c", ["-mavx2"], ["/arch:AVX2"]),
+    ("vendor/blake3_avx512.c", ["-mavx512f", "-mavx512vl"], ["/arch:AVX512"]),
 ]
-
-
-def use_intrinsics():
-    return os.environ.get("USE_INTRINSICS") == "1"
 
 
 def is_windows():
     return sys.platform.startswith("win32")
 
 
-def compile_intrinsics():
+def force_intrinsics():
+    return os.environ.get("FORCE_INTRINSICS") == "1"
+
+
+def compile_x86_intrinsics():
     object_files = []
-    for path, unix_flags, win_flags in intrinsics_files:
+    for path, unix_flags, win_flags in x86_intrinsics_files:
         cc = setuptools.distutils.ccompiler.new_compiler()
         if is_windows():
             args = win_flags
@@ -60,22 +59,35 @@ def compile_intrinsics():
 
 
 def prepare_extension():
-    if use_intrinsics():
-        extra_objects = compile_intrinsics()
-    elif is_windows():
-        extra_objects = windows_msvc_asm_files
-    else:
+    sources = [
+        "blake3module.c",
+        "vendor/blake3.c",
+        "vendor/blake3_dispatch.c",
+        "vendor/blake3_portable.c",
+    ]
+    target = platform.machine()
+    extra_objects = []
+    if target == "x86_64" and not force_intrinsics():
         # TODO: Do we ever want to use the Windows GNU assembly files?
-        extra_objects = unix_asm_files
+        if is_windows():
+            print("including x86-64 MSVC assembly")
+            extra_objects = windows_msvc_asm_files
+        else:
+            print("including x86-64 Unix assembly")
+            extra_objects = unix_asm_files
+    elif target in ("i386", "i686") or (target == "x86_64" and force_intrinsics()):
+        print("building x86 intrinsics")
+        extra_objects = compile_x86_intrinsics()
+    elif target == "aarch64":
+        print("including NEON intrinsics")
+        # Compiling NEON intrinsics doesn't require extra flags on AArch64.
+        sources.append("vendor/blake3_neon.c")
+    else:
+        print("portable code only")
 
     return setuptools.Extension(
         "blake3",
-        sources=[
-            "blake3module.c",
-            "vendor/blake3.c",
-            "vendor/blake3_dispatch.c",
-            "vendor/blake3_portable.c",
-        ],
+        sources=sources,
         include_dirs=[
             "vendor",
         ],
