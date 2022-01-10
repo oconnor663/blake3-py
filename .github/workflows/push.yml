@@ -7,8 +7,8 @@ on:
   pull_request:
 
 jobs:
-  tests:
-    name: Python ${{ matrix.python-version }}, Rust ${{ matrix.rust-toolchain }}, ${{ matrix.platform.name }}
+  rust_impl:
+    name: "Rust impl: ${{ matrix.python-version }}, ${{ matrix.rust-toolchain }}, ${{ matrix.platform.name }}"
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
@@ -57,4 +57,42 @@ jobs:
         run: python -u tests/build.py
       - name: Run pytest
         if: ${{ matrix.platform.rust-target != 'aarch64-apple-darwin' }}
+        run: python -u -m pytest --verbose
+
+  c_impl:
+    name: "C impl: ${{ matrix.python-version }}, ${{ matrix.platform.name }}"
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+        platform: [
+          # This list should be kept in sync with tag.yml.
+          { os: "ubuntu-latest",  python-architecture: "x64", name: "Linux x64" },
+          { os: "macOS-latest",   python-architecture: "x64", name: "macOS x64" },
+          { os: "windows-latest", python-architecture: "x64", name: "Windows x86" },
+          { os: "windows-latest", python-architecture: "x86", name: "Windows x64" },
+        ]
+      fail-fast: false
+    env:
+      CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.platform.python-architecture }}
+      - run: python tests/python_info.py
+      - name: build the C extension
+        run: python setup.py build
+        working-directory: c_impl
+      - name: install the C extension
+        run: pip install .
+        working-directory: c_impl
+      - name: test import and version number
+        run: python -c "import blake3; print(blake3.__version__)"
+      # We use numpy to test the error case of trying to hash a strided buffer.
+      - name: Install pytest and numpy
+        run: pip install pytest numpy
+      - name: Run pytest
         run: python -u -m pytest --verbose
