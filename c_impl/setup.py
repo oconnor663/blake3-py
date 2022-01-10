@@ -22,6 +22,7 @@ windows_msvc_asm_files = [
     "vendor/blake3_avx512_x86-64_windows_msvc.asm",
 ]
 
+# TODO: Do we need these?
 windows_gnu_asm_files = [
     "vendor/blake3_sse2_x86-64_windows_gnu.S",
     "vendor/blake3_sse41_x86-64_windows_gnu.S",
@@ -65,9 +66,9 @@ def compile_x86_intrinsics():
     for path, unix_flags, win_flags in x86_intrinsics_files:
         cc = setuptools.distutils.ccompiler.new_compiler()
         if is_windows():
-            args = win_flags
+            args = ["/O2"] + win_flags
         else:
-            args = unix_flags
+            args = ["-O3"] + unix_flags
         print(f"compiling {path} with {args}")
         object_files += cc.compile([path], extra_preargs=args)
     return object_files
@@ -120,14 +121,16 @@ def prepare_extension():
     target = platform.machine()
     extra_objects = []
     if is_x86_64() and not force_intrinsics():
-        # TODO: Do we ever want to use the Windows GNU assembly files?
         if is_windows():
             print("including x86-64 MSVC assembly")
             # The cl.exe compiler on Windows doesn't support .asm files, so we
             # need to do all the shelling out to assemble these.
+            # TODO: Do we ever want to use the Windows GNU assembly files?
             extra_objects = compile_windows_msvc_asm()
         else:
             print("including x86-64 Unix assembly")
+            # On Unix we can give .S assembly files directly to the C compiler,
+            # which is nice.
             extra_objects = unix_asm_files
     elif is_x86_32() or (is_x86_64() and force_intrinsics()):
         print("building x86 intrinsics")
