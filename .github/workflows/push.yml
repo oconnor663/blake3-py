@@ -86,6 +86,13 @@ jobs:
       - name: build the C extension
         run: python setup.py build
         working-directory: c_impl
+      - name: build the C extension with FORCE_INTRINSICS
+        run: python setup.py build
+        working-directory: c_impl
+        env:
+          FORCE_INTRINSICS: "1"
+      # Don't let `pip install .` reuse the FORCE_INTRINSICS artifacts.
+      - run: git clean -dffx
       - name: install the C extension
         run: pip install .
         working-directory: c_impl
