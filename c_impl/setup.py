@@ -94,9 +94,10 @@ def windows_ml64_path():
     vswhere_output = result.stdout.strip()
     if not result.stdout:
         raise RuntimeError("vswhere.exe didn't output a path")
-    if not os.path.exists(vswhere_output):
-        raise RuntimeError(vswhere_output + " doesn't exist")
-    return vswhere_output
+    ml64_path = vswhere_output.splitlines()[-1]
+    if not os.path.exists(ml64_path):
+        raise RuntimeError(ml64_path + " doesn't exist")
+    return ml64_path
 
 
 def compile_windows_msvc_asm():
