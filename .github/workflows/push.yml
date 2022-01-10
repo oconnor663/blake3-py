@@ -96,8 +96,8 @@ jobs:
       - name: install the C extension
         run: pip install .
         working-directory: c_impl
-      - name: test import and version number
-        run: python -c "import blake3; print(blake3.__version__)"
+      - name: test import, __version__, __file__
+        run: python -c "import blake3; print(blake3.__version__); print(blake3.__file__)"
       # We use numpy to test the error case of trying to hash a strided buffer.
       - name: Install pytest and numpy
         run: pip install pytest numpy
