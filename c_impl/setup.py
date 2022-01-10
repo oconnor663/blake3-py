@@ -43,14 +43,25 @@ def is_windows():
     return sys.platform.startswith("win32")
 
 
-def is_x86_64():
-    # Alas platform.machine() gives different answers on Windows and Linux.
-    return platform.machine().lower() in ("x86_64", "amd64")
+def targeting_x86_64():
+    # We use *Python's* word size to determine whether we're targeting 64-bit,
+    # not the machine's.
+    assert sys.maxsize.bit_length() in (31, 63)
+    return (
+        platform.machine().lower() in ("x86_64", "amd64")
+        and sys.maxsize.bit_length() == 63
+    )
 
 
-def is_x86_32():
-    # Not sure what this set should be, just matching upstream build.rs.
-    return platform.machine().lower() in ("i386", "i586", "i686")
+def targeting_x86_32():
+    # We use *Python's* word size to determine whether we're targeting 64-bit,
+    # not the machine's. Also I'm not exactly sure what the full set of
+    # "machine" values is, and this is partly copying upstream build.rs.
+    assert sys.maxsize.bit_length() in (31, 63)
+    return (
+        platform.machine().lower() in ("i386", "i586", "i686", "x86_64", "amd64")
+        and sys.maxsize.bit_length() == 31
+    )
 
 
 def is_aarch64():
@@ -121,7 +132,7 @@ def prepare_extension():
     ]
     target = platform.machine()
     extra_objects = []
-    if is_x86_64() and not force_intrinsics():
+    if targeting_x86_64() and not force_intrinsics():
         if is_windows():
             print("including x86-64 MSVC assembly")
             # The cl.exe compiler on Windows doesn't support .asm files, so we
@@ -133,7 +144,7 @@ def prepare_extension():
             # On Unix we can give .S assembly files directly to the C compiler,
             # which is nice.
             extra_objects = unix_asm_files
-    elif is_x86_32() or (is_x86_64() and force_intrinsics()):
+    elif targeting_x86_32() or (targeting_x86_64() and force_intrinsics()):
         print("building x86 intrinsics")
         # The intrinsics files each need different compiler flags set.
         # Extension() doesn't support this, so we compile them explicitly.
