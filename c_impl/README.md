@@ -57,4 +57,5 @@ cross-compiled? Do we care about this?
 **Feedback needed:** I'm very new to both `setuptools` and the Python C API,
 and there's a good chance I've made mistakes or accidentally relied on
 deprecated features. This code needs to be reviewed by someone with more
-experience.
+experience. The part that sets compiler flags for intrinsics files and the part
+that builds `.asm` files on Windows are especially rocky.
