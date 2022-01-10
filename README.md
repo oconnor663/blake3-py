@@ -88,3 +88,12 @@ behavior in the C/C++/Rust sense. But this seems to be the standard way
 to do hashing in Python. In any case, it should be rare for real world
 programs to share a hasher between threads. For more details about this
 issue, see the comments on usafe code in `lib.rs`.
+
+## Bindings for the C implementation
+
+Experimental bindings for the official BLAKE3 C implementation are available in
+the [`c_impl`](c_impl) directory. These will probably not be published on PyPI,
+and most applications should prefer the Rust-based bindings. But if you can't
+depend on the Rust toolchain, and you're on some platform that this project
+doesn't provide binary wheels for, the C-based bindings might be an
+alternative.
