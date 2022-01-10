@@ -22,6 +22,8 @@ this module with the usual commands like
 pip install .
 ```
 
+Python 3.10 (or greater, hopefully) is required.
+
 The build implements the following decision tree, which is [documented in
 greater detail
 upstream](https://github.com/BLAKE3-team/BLAKE3/tree/master/c#building):
