@@ -2,6 +2,7 @@ from collections import namedtuple
 import os
 import platform
 import setuptools
+import subprocess
 import sys
 
 HERE = os.path.dirname(__file__)
@@ -72,6 +73,43 @@ def compile_x86_intrinsics():
     return object_files
 
 
+def windows_ml64_path():
+    vswhere_path = (
+        r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+    )
+    if not os.path.exists(vswhere_path):
+        raise RuntimeError(vswhere_path + " doesn't exist.")
+    vswhere_cmd = [
+        vswhere_path,
+        "-latest",
+        "-requires",
+        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+        "-products",
+        "*",
+        "-find",
+        r"**\Hostx64\x64\ml64.exe",
+    ]
+    result = subprocess.run(vswhere_cmd, check=True, stdout=subprocess.PIPE, text=True)
+    vswhere_output = result.stdout.strip()
+    if not result.stdout:
+        raise RuntimeError("vswhere.exe didn't output a path")
+    if not os.path.exists(vswhere_output):
+        raise RuntimeError(vswhere_output + " doesn't exist")
+    return vswhere_output
+
+
+def compile_windows_msvc_asm():
+    ml64 = windows_ml64_path()
+    object_files = []
+    for path in windows_msvc_asm_files:
+        obj_path = os.path.splitext(path)[0] + ".obj"
+        cmd = [ml64, "/Fo", obj_path, "/c", path]
+        print(" ".join(cmd))
+        subprocess.run(cmd, check=True)
+        object_files.append(obj_path)
+    return object_files
+
+
 def prepare_extension():
     sources = [
         "blake3module.c",
@@ -85,12 +123,16 @@ def prepare_extension():
         # TODO: Do we ever want to use the Windows GNU assembly files?
         if is_windows():
             print("including x86-64 MSVC assembly")
-            extra_objects = windows_msvc_asm_files
+            # The cl.exe compiler on Windows doesn't support .asm files, so we
+            # need to do all the shelling out to assemble these.
+            extra_objects = compile_windows_msvc_asm()
         else:
             print("including x86-64 Unix assembly")
             extra_objects = unix_asm_files
     elif is_x86_32() or (is_x86_64() and force_intrinsics()):
         print("building x86 intrinsics")
+        # The intrinsics files each need different compiler flags set.
+        # Extension() doesn't support this, so we compile them explicitly.
         extra_objects = compile_x86_intrinsics()
     elif is_aarch64():
         print("including NEON intrinsics")
