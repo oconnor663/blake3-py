@@ -1,5 +1,10 @@
 [package]
-name = "blake3_py"
+# `name = "blake3"` is a bit confusing, because that's the same as the official
+# Rust implementation that this is wrapping. However, this crate doesn't get
+# published to crates.io. Instead, it gets packaged by Maturin and published on
+# PyPI. Installing this with `pip install blake3` is better than something
+# redundant like `pip install PyBLAKE3-py`.
+name = "blake3"
 version = "0.3.0"
 authors = ["Jack O'Connor <oconnor663@gmail.com>"]
 description = "Python bindings for the Rust blake3 crate"
@@ -10,7 +15,6 @@ readme = "README.md"
 edition = "2021"
 
 [lib]
-name = "blake3"
 crate-type = ["cdylib"]
 
 [features]
