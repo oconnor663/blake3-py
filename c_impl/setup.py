@@ -173,6 +173,12 @@ if path.realpath(os.getcwd()) != path.realpath(path.dirname(__file__)):
 setuptools.setup(
     name="blake3",
     version="0.0.0",
-    description="experimental bindings for the BLAKE3 C implementation",
+    description="experimental bindings for the BLAKE3 C implementation, API-compatible with the Rust-based blake3 module",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
+    author="Jack O'Connor",
+    author_email="oconnor663@gmail.com",
+    license="CC0-1.0 OR Apache-2.0",
+    url="https://github.com/oconnor663/blake3-py/tree/master/c_impl",
     ext_modules=[prepare_extension()],
 )
