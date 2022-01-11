@@ -75,14 +75,14 @@ def force_intrinsics():
 
 def compile_x86_intrinsics():
     object_files = []
-    for path, unix_flags, win_flags in x86_intrinsics_files:
+    for filepath, unix_flags, win_flags in x86_intrinsics_files:
         cc = setuptools.distutils.ccompiler.new_compiler()
         if is_windows():
             args = ["/O2"] + win_flags
         else:
             args = ["-O3"] + unix_flags
-        print(f"compiling {path} with {args}")
-        object_files += cc.compile([path], extra_preargs=args)
+        print(f"compiling {filepath} with {args}")
+        object_files += cc.compile([filepath], extra_preargs=args)
     return object_files
 
 
@@ -115,9 +115,9 @@ def windows_ml64_path():
 def compile_windows_msvc_asm():
     ml64 = windows_ml64_path()
     object_files = []
-    for path in windows_msvc_asm_files:
-        obj_path = path.splitext(path)[0] + ".obj"
-        cmd = [ml64, "/Fo", obj_path, "/c", path]
+    for filepath in windows_msvc_asm_files:
+        obj_path = path.splitext(filepath)[0] + ".obj"
+        cmd = [ml64, "/Fo", obj_path, "/c", filepath]
         print(" ".join(cmd))
         subprocess.run(cmd, check=True)
         object_files.append(obj_path)
