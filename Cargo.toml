@@ -1,6 +1,6 @@
 [package]
 name = "blake3_py"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Jack O'Connor <oconnor663@gmail.com>"]
 description = "Python bindings for the Rust blake3 crate"
 repository = "https://github.com/oconnor663/blake3-py"
