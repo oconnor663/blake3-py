@@ -175,7 +175,7 @@ if path.realpath(os.getcwd()) != path.realpath(path.dirname(__file__)):
     raise RuntimeError("running from another directory isn't supported")
 
 setuptools.setup(
-    name="blake3",
+    name="blake3_experimental_c",
     version=VERSION,
     description=DESCRIPTION,
     long_description=open("README.md").read(),
