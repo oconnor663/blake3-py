@@ -1,12 +1,13 @@
 from collections import namedtuple
 import os
+from os import path
 import platform
 import setuptools
 import subprocess
 import sys
 
-HERE = os.path.dirname(__file__)
-os.chdir(HERE)
+VERSION = "0.0.0"
+DESCRIPTION = "experimental bindings for the BLAKE3 C implementation, API-compatible with the Rust-based blake3 module"
 
 unix_asm_files = [
     "vendor/blake3_sse2_x86-64_unix.S",
@@ -89,7 +90,7 @@ def windows_ml64_path():
     vswhere_path = (
         r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
     )
-    if not os.path.exists(vswhere_path):
+    if not path.exists(vswhere_path):
         raise RuntimeError(vswhere_path + " doesn't exist.")
     vswhere_cmd = [
         vswhere_path,
@@ -106,7 +107,7 @@ def windows_ml64_path():
     if not result.stdout:
         raise RuntimeError("vswhere.exe didn't output a path")
     ml64_path = vswhere_output.splitlines()[-1]
-    if not os.path.exists(ml64_path):
+    if not path.exists(ml64_path):
         raise RuntimeError(ml64_path + " doesn't exist")
     return ml64_path
 
@@ -115,7 +116,7 @@ def compile_windows_msvc_asm():
     ml64 = windows_ml64_path()
     object_files = []
     for path in windows_msvc_asm_files:
-        obj_path = os.path.splitext(path)[0] + ".obj"
+        obj_path = path.splitext(path)[0] + ".obj"
         cmd = [ml64, "/Fo", obj_path, "/c", path]
         print(" ".join(cmd))
         subprocess.run(cmd, check=True)
@@ -165,6 +166,9 @@ def prepare_extension():
         extra_objects=extra_objects,
     )
 
+
+if path.realpath(os.getcwd()) != path.realpath(path.dirname(__file__)):
+    raise RuntimeError("running from another directory isn't supported")
 
 setuptools.setup(
     name="blake3",
