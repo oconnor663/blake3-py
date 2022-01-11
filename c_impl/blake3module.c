@@ -207,7 +207,7 @@ static PyObject *Blake3_copy(Blake3Object *self, PyObject *args) {
 static struct PyModuleDef blake3module = {
     PyModuleDef_HEAD_INIT,
     .m_name = "blake3",
-    .m_doc = "experimental bindings for the BLAKE3 C implementation",
+    .m_doc = SETUP_PY_DESCRIPTION,
     .m_size = -1,
 };
 
@@ -280,7 +280,7 @@ PyMODINIT_FUNC PyInit_blake3(void) {
     goto exit;
   }
 
-  if (PyModule_AddStringConstant(module, "__version__", "0.0.0") < 0) {
+  if (PyModule_AddStringConstant(module, "__version__", SETUP_PY_VERSION) < 0) {
     goto exit;
   }
 

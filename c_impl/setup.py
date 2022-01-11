@@ -164,6 +164,10 @@ def prepare_extension():
             "vendor",
         ],
         extra_objects=extra_objects,
+        define_macros=[
+            ("SETUP_PY_VERSION", '"' + VERSION + '"'),
+            ("SETUP_PY_DESCRIPTION", '"' + DESCRIPTION + '"'),
+        ],
     )
 
 
@@ -172,8 +176,8 @@ if path.realpath(os.getcwd()) != path.realpath(path.dirname(__file__)):
 
 setuptools.setup(
     name="blake3",
-    version="0.0.0",
-    description="experimental bindings for the BLAKE3 C implementation, API-compatible with the Rust-based blake3 module",
+    version=VERSION,
+    description=DESCRIPTION,
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     author="Jack O'Connor",
