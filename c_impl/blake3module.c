@@ -136,16 +136,12 @@ exit:
 // Used for long updates and long outputs.
 static void Blake3_release_gil_and_lock_self(Blake3Object *self,
                                              PyThreadState **thread_state) {
-  // Note that the order of operations here is important. Acquiring self->lock
-  // before releasing the GIL could deadlock.
   *thread_state = PyEval_SaveThread();
   PyThread_acquire_lock(self->lock, WAIT_LOCK);
 }
 
 static void Blake3_unlock_self_and_acquire_gil(Blake3Object *self,
                                                PyThreadState **thread_state) {
-  // Note that the order of operations here is important. Acquiring the GIL
-  // before releasing self->lock could deadlock.
   PyThread_release_lock(self->lock);
   PyEval_RestoreThread(*thread_state);
 }

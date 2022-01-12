@@ -4,6 +4,9 @@ use pyo3::exceptions::{PyBufferError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyString};
 
+// This is the same as HASHLIB_GIL_MINSIZE in CPython.
+const GIL_MINSIZE: usize = 2048;
+
 unsafe fn unsafe_slice_from_buffer<'a>(py: Python, data: &'a PyAny) -> PyResult<&'a [u8]> {
     // First see if we can get a u8 slice. This is the common case.
     match unsafe_slice_from_typed_buffer::<u8>(py, data) {
@@ -89,17 +92,6 @@ unsafe fn unsafe_slice_from_typed_buffer<'a, T: pyo3::buffer::Element>(
         // array or something like that.
         Err(PyBufferError::new_err("buffer is not contiguous"))
     }
-}
-
-fn output_bytes(rust_hasher: &blake3::Hasher, length: u64, seek: u64) -> PyResult<Vec<u8>> {
-    if length > isize::max_value() as u64 {
-        return Err(PyValueError::new_err("length overflows isize"));
-    }
-    let mut reader = rust_hasher.finalize_xof();
-    let mut output = vec![0; length as usize];
-    reader.set_position(seek);
-    reader.fill(&mut output);
-    Ok(output)
 }
 
 fn new_thread_pool(max_threads: usize) -> rayon::ThreadPool {
@@ -211,6 +203,7 @@ impl Blake3Class {
         usedforsecurity: bool,
     ) -> PyResult<Blake3Class> {
         let _ = usedforsecurity; // currently ignored
+
         let mut rust_hasher = match (key, derive_key_context) {
             // The default, unkeyed hash function.
             (None, None) => blake3::Hasher::new(),
@@ -240,6 +233,7 @@ impl Blake3Class {
                 ))
             }
         };
+
         let threading_mode = match max_threads {
             1 => ThreadingMode::Single,
             Self::AUTO => ThreadingMode::Auto,
@@ -249,14 +243,16 @@ impl Blake3Class {
             },
             _ => return Err(PyValueError::new_err("not a valid number of threads")),
         };
+
         if let Some(data) = data {
             // Get a slice that's not tied to the `py` lifetime.
             // XXX: The safety situation here is a bit complicated. See all the
-            //      comments in unsafe_slice_from_buffer. However, since the
-            //      rust_hasher isn't yet shared, we don't need to access it
-            //      through the Mutex here like we do in update().
+            //      comments in unsafe_slice_from_buffer.
             let slice: &[u8] = unsafe { unsafe_slice_from_buffer(py, data)? };
-            match &threading_mode {
+
+            // Since rust_hasher isn't yet shared, we don't need to access it
+            // through the Mutex here like we do in update() below.
+            let mut update_closure = || match &threading_mode {
                 ThreadingMode::Single => {
                     rust_hasher.update(slice);
                 }
@@ -266,8 +262,19 @@ impl Blake3Class {
                 ThreadingMode::Pool { pool, .. } => pool.install(|| {
                     rust_hasher.update_rayon(slice);
                 }),
+            };
+
+            if slice.len() >= GIL_MINSIZE {
+                // Release the GIL while we hash this slice, so that we don't
+                // block other threads. But again, see all the comments above
+                // about data race risks.
+                py.allow_threads(update_closure);
+            } else {
+                // Don't bother releasing the GIL for short updates.
+                update_closure();
             }
         }
+
         Ok(Blake3Class {
             rust_hasher: Mutex::new(rust_hasher),
             threading_mode,
@@ -295,23 +302,28 @@ impl Blake3Class {
         //      comments in unsafe_slice_from_buffer.
         let slice: &[u8] = unsafe { unsafe_slice_from_buffer(py, data)? };
 
-        // Release the GIL while we hash the slice. This ensures that we
-        // won't block other threads if this update is long running. But
-        // again, see all the comments above about data race risks.
-        py.allow_threads(|| match &mut self.threading_mode {
+        let mut update_closure = || match &mut self.threading_mode {
             ThreadingMode::Single => {
-                let mut hasher = self.rust_hasher.lock();
-                hasher.update(slice);
+                self.rust_hasher.lock().update(slice);
             }
             ThreadingMode::Auto => {
-                let mut hasher = self.rust_hasher.lock();
-                hasher.update_rayon(slice);
+                self.rust_hasher.lock().update_rayon(slice);
             }
             ThreadingMode::Pool { pool, .. } => pool.install(|| {
-                let mut hasher = self.rust_hasher.lock();
-                hasher.update_rayon(slice);
+                self.rust_hasher.lock().update_rayon(slice);
             }),
-        });
+        };
+
+        if slice.len() >= GIL_MINSIZE {
+            // Release the GIL while we hash this slice, so that we don't
+            // block other threads. But again, see all the comments above
+            // about data race risks.
+            py.allow_threads(update_closure);
+        } else {
+            // Don't bother releasing the GIL for short updates.
+            update_closure();
+        }
+
         Ok(())
     }
 
@@ -364,12 +376,23 @@ impl Blake3Class {
     ///   to 0.
     #[args(length = "32", "*", seek = "0")]
     #[pyo3(text_signature = "(length=32, *, seek=0)")]
-    fn digest<'p>(&self, py: Python<'p>, length: u64, seek: u64) -> PyResult<&'p PyBytes> {
-        let hasher = self.rust_hasher.lock();
-        // If this is a lot of output, it could be a long-running operation.
-        // Release the GIL.
-        let bytes = py.allow_threads(|| output_bytes(&hasher, length, seek));
-        Ok(PyBytes::new(py, &bytes?))
+    fn digest<'p>(&self, py: Python<'p>, length: usize, seek: u64) -> PyResult<&'p PyBytes> {
+        if length > isize::max_value() as usize {
+            return Err(PyValueError::new_err("length overflows isize"));
+        }
+        let mut reader = self.rust_hasher.lock().finalize_xof();
+        reader.set_position(seek);
+        PyBytes::new_with(py, length, |slice| {
+            debug_assert_eq!(length, slice.len());
+            if length >= GIL_MINSIZE {
+                // This could be a long-running operation. Release the GIL.
+                py.allow_threads(|| reader.fill(slice));
+            } else {
+                // Don't bother releasing the GIL for short outputs.
+                reader.fill(slice);
+            }
+            Ok(())
+        })
     }
 
     /// Finalize the hasher and return the resulting hash as a hexadecimal
@@ -390,7 +413,10 @@ impl Blake3Class {
     ///   hex encoding. Defaults to 0.
     #[args(length = "32", "*", seek = "0")]
     #[pyo3(text_signature = "(length=32, *, seek=0)")]
-    fn hexdigest<'p>(&self, py: Python<'p>, length: u64, seek: u64) -> PyResult<&'p PyString> {
+    fn hexdigest<'p>(&self, py: Python<'p>, length: usize, seek: u64) -> PyResult<&'p PyString> {
+        if length > (isize::max_value() / 2) as usize {
+            return Err(PyValueError::new_err("length overflows isize"));
+        }
         let bytes = self.digest(py, length, seek)?;
         let hex = hex::encode(bytes.as_bytes());
         Ok(PyString::new(py, &hex))
