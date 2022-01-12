@@ -22,6 +22,7 @@ neon = ["blake3/neon"]
 
 [dependencies]
 blake3 = { version = "1.0.0", features = ["rayon"] }
-pyo3 = { version = "0.15", features = ["extension-module"] }
 hex = "0.4.2"
+parking_lot = "0.11.2"
+pyo3 = { version = "0.15", features = ["extension-module"] }
 rayon = "1.2.1"

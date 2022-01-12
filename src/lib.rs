@@ -1,8 +1,8 @@
+use parking_lot::Mutex;
 use pyo3::buffer::PyBuffer;
 use pyo3::exceptions::{PyBufferError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyString};
-use std::sync::Mutex;
 
 unsafe fn unsafe_slice_from_buffer<'a>(py: Python, data: &'a PyAny) -> PyResult<&'a [u8]> {
     // First see if we can get a u8 slice. This is the common case.
@@ -300,15 +300,15 @@ impl Blake3Class {
         // again, see all the comments above about data race risks.
         py.allow_threads(|| match &mut self.threading_mode {
             ThreadingMode::Single => {
-                let mut hasher = self.rust_hasher.lock().unwrap();
+                let mut hasher = self.rust_hasher.lock();
                 hasher.update(slice);
             }
             ThreadingMode::Auto => {
-                let mut hasher = self.rust_hasher.lock().unwrap();
+                let mut hasher = self.rust_hasher.lock();
                 hasher.update_rayon(slice);
             }
             ThreadingMode::Pool { pool, .. } => pool.install(|| {
-                let mut hasher = self.rust_hasher.lock().unwrap();
+                let mut hasher = self.rust_hasher.lock();
                 hasher.update_rayon(slice);
             }),
         });
@@ -327,7 +327,7 @@ impl Blake3Class {
     #[pyo3(text_signature = "()")]
     fn copy(&self) -> Blake3Class {
         Blake3Class {
-            rust_hasher: Mutex::new(self.rust_hasher.lock().unwrap().clone()),
+            rust_hasher: Mutex::new(self.rust_hasher.lock().clone()),
             threading_mode: self.threading_mode.clone(),
         }
     }
@@ -344,7 +344,7 @@ impl Blake3Class {
     #[args()]
     #[pyo3(text_signature = "()")]
     fn reset(&mut self) {
-        self.rust_hasher.lock().unwrap().reset();
+        self.rust_hasher.lock().reset();
     }
 
     /// Finalize the hasher and return the resulting hash as bytes. This
@@ -365,7 +365,7 @@ impl Blake3Class {
     #[args(length = "32", "*", seek = "0")]
     #[pyo3(text_signature = "(length=32, *, seek=0)")]
     fn digest<'p>(&self, py: Python<'p>, length: u64, seek: u64) -> PyResult<&'p PyBytes> {
-        let hasher = self.rust_hasher.lock().unwrap();
+        let hasher = self.rust_hasher.lock();
         // If this is a lot of output, it could be a long-running operation.
         // Release the GIL.
         let bytes = py.allow_threads(|| output_bytes(&hasher, length, seek));
