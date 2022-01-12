@@ -7,6 +7,14 @@
 
 #define AUTO -1
 
+// CPython defines HASHLIB_GIL_MINSIZE in hashlib.h. We'll want to remove this
+// definition if this code is added to CPython.
+#ifdef HASHLIB_GIL_MINSIZE
+#error Already defined. Delete these lines?
+#else
+#define HASHLIB_GIL_MINSIZE 2048
+#endif
+
 // clang-format gets confused by the (correct, documented) missing semicolon
 // after PyObject_HEAD.
 // clang-format off
@@ -22,12 +30,27 @@ static void release_if_acquired(Py_buffer *buf) {
   }
 }
 
-static bool weird_buffer(Py_buffer *buf) {
+static bool weird_buffer(const Py_buffer *buf) {
   if (buf != NULL && buf->obj != NULL && buf->itemsize != 1) {
     PyErr_SetString(PyExc_ValueError, "buffer elements must be bytes");
     return true;
   }
   return false;
+}
+
+static void hash_and_maybe_release_gil(Blake3Object *self,
+                                       const Py_buffer *buf) {
+  if (buf->len >= HASHLIB_GIL_MINSIZE) {
+    // clang-format off
+    Py_BEGIN_ALLOW_THREADS
+    // TODO: Do we want to hold an instance mutex while we do this?
+    blake3_hasher_update(&self->hasher, buf->buf, buf->len);
+    Py_END_ALLOW_THREADS
+    // clang-format on
+  } else {
+    // Don't bother releasing the GIL for short inputs.
+    blake3_hasher_update(&self->hasher, buf->buf, buf->len);
+  }
 }
 
 static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
@@ -86,7 +109,7 @@ static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
   }
 
   if (data.obj != NULL) {
-    blake3_hasher_update(&self->hasher, data.buf, data.len);
+    hash_and_maybe_release_gil(self, &data);
   }
 
   // success
@@ -111,7 +134,7 @@ static PyObject *Blake3_update(Blake3Object *self, PyObject *args) {
     goto exit;
   }
 
-  blake3_hasher_update(&self->hasher, data.buf, data.len);
+  hash_and_maybe_release_gil(self, &data);
 
   // success
   Py_INCREF(Py_None);
