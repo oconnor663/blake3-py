@@ -15,16 +15,7 @@
 #define HASHLIB_GIL_MINSIZE 2048
 #endif
 
-// clang-format gets confused by the (correct, documented) missing semicolon
-// after PyObject_HEAD.
-// clang-format off
-typedef struct {
-  PyObject_HEAD
-  blake3_hasher hasher;
-} Blake3Object;
-// clang-format on
-
-static void release_if_acquired(Py_buffer *buf) {
+static void release_buf_if_acquired(Py_buffer *buf) {
   if (buf != NULL && buf->obj != NULL) {
     PyBuffer_Release(buf);
   }
@@ -38,19 +29,20 @@ static bool weird_buffer(const Py_buffer *buf) {
   return false;
 }
 
-static void hash_and_maybe_release_gil(Blake3Object *self,
-                                       const Py_buffer *buf) {
-  if (buf->len >= HASHLIB_GIL_MINSIZE) {
-    // clang-format off
-    Py_BEGIN_ALLOW_THREADS
-    // TODO: Do we want to hold an instance mutex while we do this?
-    blake3_hasher_update(&self->hasher, buf->buf, buf->len);
-    Py_END_ALLOW_THREADS
-    // clang-format on
-  } else {
-    // Don't bother releasing the GIL for short inputs.
-    blake3_hasher_update(&self->hasher, buf->buf, buf->len);
-  }
+typedef struct {
+  // clang-format gets confused by the (correct, documented) missing semicolon
+  // after PyObject_HEAD.
+  // clang-format off
+  PyObject_HEAD
+  blake3_hasher hasher;
+  PyThread_type_lock lock;
+  // NOTE: Any new fields here need to be handled in both _init() and _copy().
+  // clang-format on
+} Blake3Object;
+
+static void Blake3_dealloc(Blake3Object *self) {
+  PyThread_free_lock(self->lock);
+  Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
@@ -109,16 +101,76 @@ static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
   }
 
   if (data.obj != NULL) {
-    hash_and_maybe_release_gil(self, &data);
+    if (data.len >= HASHLIB_GIL_MINSIZE) {
+      // clang-format off
+      Py_BEGIN_ALLOW_THREADS
+      // This instance is not yet shared, so we don't need self->lock.
+      blake3_hasher_update(&self->hasher, data.buf, data.len);
+      Py_END_ALLOW_THREADS
+      // clang-format on
+    } else {
+      // Don't bother releasing the GIL for short inputs.
+      blake3_hasher_update(&self->hasher, data.buf, data.len);
+    }
+  }
+
+  // TODO: Hashlib implementations do an optimization where they avoid
+  // allocating this lock unless its needed. Is that worth it? It would mean
+  // we'd need to handle the possible allocation failure at every lock site.
+  // (Notably, hashlib seems not to handle this and allows an unlikely race
+  // condition.)
+  self->lock = PyThread_allocate_lock();
+  if (self->lock == NULL) {
+    goto exit;
   }
 
   // success
   ret = 0;
 
 exit:
-  release_if_acquired(&data);
-  release_if_acquired(&key);
+  release_buf_if_acquired(&data);
+  release_buf_if_acquired(&key);
   return ret;
+}
+
+// Used for long updates and long outputs.
+static void Blake3_release_gil_and_lock_self(Blake3Object *self,
+                                             PyThreadState **thread_state) {
+  // Note that the order of operations here is important. Acquiring self->lock
+  // before releasing the GIL could deadlock.
+  *thread_state = PyEval_SaveThread();
+  PyThread_acquire_lock(self->lock, WAIT_LOCK);
+}
+
+static void Blake3_unlock_self_and_acquire_gil(Blake3Object *self,
+                                               PyThreadState **thread_state) {
+  // Note that the order of operations here is important. Acquiring the GIL
+  // before releasing self->lock could deadlock.
+  PyThread_release_lock(self->lock);
+  PyEval_RestoreThread(*thread_state);
+}
+
+// Used for shorter operations that touch self.
+static void Blake3_lock_self(Blake3Object *self) {
+// The optimistic locking strategy here is copied from CPython's ENTER_HASHLIB
+// macro. If we port this code to hashlib, we should probably use that.
+#ifdef ENTER_HASHLIB
+#error Delete this helper function?
+#endif
+  if (!PyThread_acquire_lock(self->lock, NOWAIT_LOCK)) {
+    // clang-format off
+    Py_BEGIN_ALLOW_THREADS
+    PyThread_acquire_lock(self->lock, WAIT_LOCK);
+    Py_END_ALLOW_THREADS
+    // clang-format on
+  }
+}
+
+static void Blake3_unlock_self(Blake3Object *self) {
+#ifdef LEAVE_HASHLIB
+#error Delete this helper function too?
+#endif
+  PyThread_release_lock(self->lock);
 }
 
 static PyObject *Blake3_update(Blake3Object *self, PyObject *args) {
@@ -134,14 +186,24 @@ static PyObject *Blake3_update(Blake3Object *self, PyObject *args) {
     goto exit;
   }
 
-  hash_and_maybe_release_gil(self, &data);
+  if (data.len >= HASHLIB_GIL_MINSIZE) {
+    PyThreadState *thread_state;
+    Blake3_release_gil_and_lock_self(self, &thread_state);
+    blake3_hasher_update(&self->hasher, data.buf, data.len);
+    Blake3_unlock_self_and_acquire_gil(self, &thread_state);
+  } else {
+    // Don't bother releasing the GIL for short inputs.
+    Blake3_lock_self(self);
+    blake3_hasher_update(&self->hasher, data.buf, data.len);
+    Blake3_unlock_self(self);
+  }
 
   // success
   Py_INCREF(Py_None);
   ret = Py_None;
 
 exit:
-  release_if_acquired(&data);
+  release_buf_if_acquired(&data);
   return ret;
 }
 
@@ -163,8 +225,21 @@ static PyObject *Blake3_digest(Blake3Object *self, PyObject *args,
   if (output == NULL) {
     return NULL;
   }
-  blake3_hasher_finalize_seek(&self->hasher, seek,
-                              (uint8_t *)PyBytes_AsString(output), length);
+
+  if (length >= HASHLIB_GIL_MINSIZE) {
+    PyThreadState *thread_state;
+    Blake3_release_gil_and_lock_self(self, &thread_state);
+    blake3_hasher_finalize_seek(&self->hasher, seek,
+                                (uint8_t *)PyBytes_AsString(output), length);
+    Blake3_unlock_self_and_acquire_gil(self, &thread_state);
+  } else {
+    // Don't bother releasing the GIL for short outputs.
+    Blake3_lock_self(self);
+    blake3_hasher_finalize_seek(&self->hasher, seek,
+                                (uint8_t *)PyBytes_AsString(output), length);
+    Blake3_unlock_self(self);
+  }
+
   return output;
 }
 
@@ -183,7 +258,9 @@ static PyObject *Blake3_hexdigest(Blake3Object *self, PyObject *args,
 static PyObject *Blake3_copy(Blake3Object *self, PyObject *args);
 
 static PyObject *Blake3_reset(Blake3Object *self, PyObject *args) {
+  Blake3_lock_self(self);
   blake3_hasher_reset(&self->hasher);
+  Blake3_unlock_self(self);
   Py_RETURN_NONE;
 }
 
@@ -201,10 +278,10 @@ static PyMethodDef Blake3_methods[] = {
     {NULL, NULL, 0, NULL} // sentinel
 };
 
-// clang-format gets confused by the (correct, documented) missing semicolon
-// after PyObject_HEAD_INIT.
-// clang-format off
 static PyTypeObject Blake3Type = {
+    // clang-format gets confused by the (correct, documented) missing
+    // semicolon after PyObject_HEAD_INIT.
+    // clang-format off
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "blake3",
     .tp_doc = "an incremental BLAKE3 hasher",
@@ -213,18 +290,44 @@ static PyTypeObject Blake3Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = PyType_GenericNew,
     .tp_init = (initproc) Blake3_init,
+    .tp_dealloc = (destructor) Blake3_dealloc,
     .tp_methods = Blake3_methods,
+    // clang-format on
 };
-// clang-format on
 
 // Declared above but implemented here, because it needs to refer to Blake3Type.
 static PyObject *Blake3_copy(Blake3Object *self, PyObject *args) {
-  Blake3Object *copy = PyObject_New(Blake3Object, &Blake3Type);
+  Blake3Object *copy = NULL;
+  PyThread_type_lock copy_lock = NULL;
+
+  PyObject *ret = NULL;
+
+  copy = PyObject_New(Blake3Object, &Blake3Type);
   if (copy == NULL) {
-    return NULL;
+    goto exit;
   }
+
+  copy_lock = PyThread_allocate_lock();
+  if (copy_lock == NULL) {
+    goto exit;
+  }
+
+  Blake3_lock_self(self);
   memcpy(&copy->hasher, &self->hasher, sizeof(blake3_hasher));
-  return (PyObject *)copy;
+  copy->lock = copy_lock;
+  Blake3_unlock_self(self);
+
+  // success
+  ret = (PyObject *)copy;
+  copy = NULL;      // pass the refcount
+  copy_lock = NULL; // pass ownership
+
+exit:
+  Py_XDECREF(copy);
+  if (copy_lock != NULL) {
+    PyThread_free_lock(copy_lock);
+  }
+  return ret;
 }
 
 static struct PyModuleDef blake3module = {
