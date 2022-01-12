@@ -284,14 +284,6 @@ impl Blake3Class {
     /// Add input bytes to the hasher. You can call this any number of
     /// times.
     ///
-    /// Note that `update` is not thread safe, and multiple threads sharing
-    /// a single instance must use a `threading.Lock` or similar if one of
-    /// them might be calling `update`. The thread safety issues here are
-    /// worse than usual, because this method releases the GIL internally.
-    /// However, updating one hasher from multiple threads is a very odd
-    /// thing to do, and real world program almost never need to worry about
-    /// this.
-    ///
     /// Arguments:
     /// - `data` (required): The input bytes.
     #[args(data, "/")]
@@ -330,11 +322,6 @@ impl Blake3Class {
     /// Return a copy (“clone”) of the hasher. This can be used to
     /// efficiently compute the digests of data sharing a common initial
     /// substring.
-    ///
-    /// This is a read-only method, but the multithreading warning attached
-    /// to the `update` method applies here. It is not safe to call this
-    /// method while another thread might be calling `update` on the same
-    /// instance.
     #[args()]
     #[pyo3(text_signature = "()")]
     fn copy(&self) -> Blake3Class {
@@ -349,10 +336,6 @@ impl Blake3Class {
     /// greater than 1), resetting the hasher lets you reuse that pool.
     /// Note that if any input bytes were supplied in the original
     /// construction of the hasher, those bytes are *not* replayed.
-    ///
-    /// The multithreading warning attached to the `update` method applies
-    /// here. It is not safe to call this method while another thread might
-    /// be calling `update` on the same instance.
     #[args()]
     #[pyo3(text_signature = "()")]
     fn reset(&mut self) {
@@ -362,11 +345,6 @@ impl Blake3Class {
     /// Finalize the hasher and return the resulting hash as bytes. This
     /// does not modify the hasher, and calling it twice will give the same
     /// result. You can also add more input and finalize again.
-    ///
-    /// This is a read-only method, but the multithreading warning attached
-    /// to the `update` method applies here. It is not safe to call this
-    /// method while another thread might be calling `update` on the same
-    /// instance.
     ///
     /// Arguments:
     /// - `length`: The number of bytes in the final hash. BLAKE3 supports
@@ -399,11 +377,6 @@ impl Blake3Class {
     /// string. This does not modify the hasher, and calling it twice will
     /// give the same result. You can also add more input and finalize
     /// again.
-    ///
-    /// This is a read-only method, but the multithreading warning attached
-    /// to the `update` method applies here. It is not safe to call this
-    /// method while another thread might be calling `update` on the same
-    /// instance.
     ///
     /// Arguments:
     /// - `length`: The number of bytes in the final hash, prior to hex
