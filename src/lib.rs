@@ -2,6 +2,7 @@ use pyo3::buffer::PyBuffer;
 use pyo3::exceptions::{PyBufferError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyString};
+use std::sync::Mutex;
 
 unsafe fn unsafe_slice_from_buffer<'a>(py: Python, data: &'a PyAny) -> PyResult<&'a [u8]> {
     // First see if we can get a u8 slice. This is the common case.
@@ -47,42 +48,37 @@ unsafe fn unsafe_slice_from_typed_buffer<'a, T: pyo3::buffer::Element>(
         //   even supports one's complement systems, and also "reinterpret the
         //   bit pattern as unsigned" is likely to be what the caller expects
         //   anyway.
-        // - This buffer might be aliased by other Python values. This is the
-        //   reason PyByteArray::as_bytes is unsafe, and the reason PyO3 uses
-        //   the ReadOnlyCell type. This isn't an issue for us here, though,
-        //   because we're not dealing with any values other than `data`, we're
-        //   not calling into any other Python code, and we're not mutating
-        //   anything ourselves.
+        // - This buffer might be aliased. This is the main reason why
+        //   PyByteArray::as_bytes is unsafe and why PyO3 uses the ReadOnlyCell
+        //   type. If we mutated any other buffers, or ran any unknown Python
+        //   code that could do anything (including any object finalizer), we
+        //   could end up mutating this buffer too. Luckily we don't do either
+        //   of those things in this module.
         // - We're breaking the lifetime relationship between this slice and
-        //   `py`, because we're going to release the GIL during update.
+        //   `py`, because we're going to release the GIL during update. That
+        //   means *other threads* might mutate this buffer.
         //
-        // The last point above is the most serious. If we were retaining the
-        // GIL, we could reason that no other thread could do something awful
-        // like resizing the buffer while we're reading it. (Python appears to
-        // raise something like "BufferError: Existing exports of data: object
-        // cannot be re-sized" in that case, but I don't know if we can rely on
-        // that as a safety guarantee, and in any case other threads can at
-        // least write to the buffer.) However, retaining the GIL during update
-        // is an unacceptable performance issue, because update is potentially
-        // long-running. If we retained the GIL, then an app hashing a large
-        // buffer on a background thread might inadvertently block its main
-        // thread from processing UI events for a second or more.
+        // The last point above is the most serious. Python locks buffers to
+        // prevent resizing while we're looking at them, so we don't need to
+        // worry about out-of-bounds reads or use-after-free here, but it's
+        // still possible for another thread to write to the bytes of the buffer
+        // while we're reading them. In practice, the result of a race here is
+        // "probably just junk bytes", but technically this violates the
+        // requirements of the Rust memory model, and there may be obscure
+        // circumstances (now or in the future) where it does something worse.
         //
-        // The standard hashing implementations in Python's hashlib have the
-        // same problem. They release the GIL too. You can trigger a real data
-        // race with standard types like this:
-        // https://gist.github.com/oconnor663/c69cb4dbffb9b13bbced3fe8ce2181ac
+        // However, this isn't just our problem. The standard hash
+        // implementations in Python's hashlib have the same behavior, and you
+        // can trigger a real data race with standard types like this:
+        // https://gist.github.com/oconnor663/c69cb4dbffb9b13bbced3fe8ce2181ac.
+        // This data race violates the requirements of the C memory model also.
         //
-        // At the end of the day, the situation appears to be this:
-        //
-        // - Even if this race turns out to be exploitable, in practice only
-        //   pathological programs should trigger it. Updating a hasher
-        //   concurrently from different threads is just a weird thing to do,
-        //   and it's almost always a correctness bug, regardless of whether
-        //   it's a soundness/security bug too.
-        // - This sort of data race risk seems to be typical when Python
-        //   extensions release the GIL to call into long-running native code.
-        //   Again, this is what hashlib does too.
+        // At the end of the day, even if this race turns out to be exploitable
+        // (which appears unlikely), only pathological programs should be able
+        // to trigger it. Writing to a buffer concurrently from another thread
+        // while hashing it is a very weird thing to do, and it's almost
+        // guaranteed to be a correctness bug, regardless of whether it's also a
+        // soundness bug.
         let readonly_ptr: *const pyo3::buffer::ReadOnlyCell<T> = readonly_slice.as_ptr();
         Ok(std::slice::from_raw_parts(
             readonly_ptr as *const u8,
@@ -163,9 +159,10 @@ impl Clone for ThreadingMode {
 #[pyo3(
     text_signature = "(data=b'', /, *, key=None, derive_key_context=None, max_threads=1, usedforsecurity=True)"
 )]
-#[derive(Clone)]
 struct Blake3Class {
-    rust_hasher: blake3::Hasher,
+    // We release the GIL while updating this hasher, which means that other
+    // threads could race to access it. Putting it in a Mutex keeps it safe.
+    rust_hasher: Mutex<blake3::Hasher>,
     threading_mode: ThreadingMode,
 }
 
@@ -214,7 +211,7 @@ impl Blake3Class {
         usedforsecurity: bool,
     ) -> PyResult<Blake3Class> {
         let _ = usedforsecurity; // currently ignored
-        let rust_hasher = match (key, derive_key_context) {
+        let mut rust_hasher = match (key, derive_key_context) {
             // The default, unkeyed hash function.
             (None, None) => blake3::Hasher::new(),
             // The keyed hash function.
@@ -222,9 +219,9 @@ impl Blake3Class {
                 // Use the same function to get the key buffer as `update` uses
                 // to get the data buffer. In this case it isn't for lifetime
                 // reasons, but because we want to handle the buffer protocol in
-                // the same way to support bytes/bytearray/memoryview etc.
-                // We're going to copy the bytes immediately, so we don't have
-                // the same race condition issues here.
+                // the same way to support bytes/bytearray/memoryview etc. Even
+                // though we just copy the bytes immediately, technically this
+                // is the same race condition.
                 let key_slice: &[u8] = unsafe { unsafe_slice_from_buffer(py, key_buf)? };
                 let key_array: &[u8; 32] = if let Ok(array) = key_slice.try_into() {
                     array
@@ -252,14 +249,29 @@ impl Blake3Class {
             },
             _ => return Err(PyValueError::new_err("not a valid number of threads")),
         };
-        let mut python_hasher = Blake3Class {
-            rust_hasher,
-            threading_mode,
-        };
         if let Some(data) = data {
-            python_hasher.update(py, data)?;
+            // Get a slice that's not tied to the `py` lifetime.
+            // XXX: The safety situation here is a bit complicated. See all the
+            //      comments in unsafe_slice_from_buffer. However, since the
+            //      rust_hasher isn't yet shared, we don't need to access it
+            //      through the Mutex here like we do in update().
+            let slice: &[u8] = unsafe { unsafe_slice_from_buffer(py, data)? };
+            match &threading_mode {
+                ThreadingMode::Single => {
+                    rust_hasher.update(slice);
+                }
+                ThreadingMode::Auto => {
+                    rust_hasher.update_rayon(slice);
+                }
+                ThreadingMode::Pool { pool, .. } => pool.install(|| {
+                    rust_hasher.update_rayon(slice);
+                }),
+            }
         }
-        Ok(python_hasher)
+        Ok(Blake3Class {
+            rust_hasher: Mutex::new(rust_hasher),
+            threading_mode,
+        })
     }
 
     /// Add input bytes to the hasher. You can call this any number of
@@ -288,14 +300,17 @@ impl Blake3Class {
         // again, see all the comments above about data race risks.
         py.allow_threads(|| match &mut self.threading_mode {
             ThreadingMode::Single => {
-                self.rust_hasher.update(slice);
+                let mut hasher = self.rust_hasher.lock().unwrap();
+                hasher.update(slice);
             }
             ThreadingMode::Auto => {
-                self.rust_hasher.update_rayon(slice);
+                let mut hasher = self.rust_hasher.lock().unwrap();
+                hasher.update_rayon(slice);
             }
-            ThreadingMode::Pool { pool, .. } => {
-                pool.install(|| self.rust_hasher.update_rayon(slice));
-            }
+            ThreadingMode::Pool { pool, .. } => pool.install(|| {
+                let mut hasher = self.rust_hasher.lock().unwrap();
+                hasher.update_rayon(slice);
+            }),
         });
         Ok(())
     }
@@ -311,7 +326,10 @@ impl Blake3Class {
     #[args()]
     #[pyo3(text_signature = "()")]
     fn copy(&self) -> Blake3Class {
-        self.clone()
+        Blake3Class {
+            rust_hasher: Mutex::new(self.rust_hasher.lock().unwrap().clone()),
+            threading_mode: self.threading_mode.clone(),
+        }
     }
 
     /// Reset the hasher to its initial empty state. If the hasher contains
@@ -326,7 +344,7 @@ impl Blake3Class {
     #[args()]
     #[pyo3(text_signature = "()")]
     fn reset(&mut self) {
-        self.rust_hasher.reset();
+        self.rust_hasher.lock().unwrap().reset();
     }
 
     /// Finalize the hasher and return the resulting hash as bytes. This
@@ -347,8 +365,11 @@ impl Blake3Class {
     #[args(length = "32", "*", seek = "0")]
     #[pyo3(text_signature = "(length=32, *, seek=0)")]
     fn digest<'p>(&self, py: Python<'p>, length: u64, seek: u64) -> PyResult<&'p PyBytes> {
-        let bytes = output_bytes(&self.rust_hasher, length, seek)?;
-        Ok(PyBytes::new(py, &bytes))
+        let hasher = self.rust_hasher.lock().unwrap();
+        // If this is a lot of output, it could be a long-running operation.
+        // Release the GIL.
+        let bytes = py.allow_threads(|| output_bytes(&hasher, length, seek));
+        Ok(PyBytes::new(py, &bytes?))
     }
 
     /// Finalize the hasher and return the resulting hash as a hexadecimal
@@ -370,8 +391,8 @@ impl Blake3Class {
     #[args(length = "32", "*", seek = "0")]
     #[pyo3(text_signature = "(length=32, *, seek=0)")]
     fn hexdigest<'p>(&self, py: Python<'p>, length: u64, seek: u64) -> PyResult<&'p PyString> {
-        let bytes = output_bytes(&self.rust_hasher, length, seek)?;
-        let hex = hex::encode(&bytes);
+        let bytes = self.digest(py, length, seek)?;
+        let hex = hex::encode(bytes.as_bytes());
         Ok(PyString::new(py, &hex))
     }
 }

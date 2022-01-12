@@ -77,18 +77,6 @@ if you're building the source distribution, or if a binary wheel isn't
 available for your environment, you'll need to [install the Rust
 toolchain](https://rustup.rs).
 
-## Thread Safety and the GIL
-
-Like the `hashlib` functions in the Python standard library, we release
-the GIL while hashing, to avoid blocking other threads for a potentially
-long time. However, this allows race conditions: it's possible for other
-threads to access a hasher or an input buffer while hashing is going on.
-This is worse than an ordinary Python race condition. It's undefined
-behavior in the C/C++/Rust sense. But this seems to be the standard way
-to do hashing in Python. In any case, it should be rare for real world
-programs to share a hasher between threads. For more details about this
-issue, see the comments on usafe code in `lib.rs`.
-
 ## C Bindings
 
 Experimental bindings for the official BLAKE3 C implementation are available in
