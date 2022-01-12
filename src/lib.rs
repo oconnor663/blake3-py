@@ -1,6 +1,6 @@
 use parking_lot::Mutex;
 use pyo3::buffer::PyBuffer;
-use pyo3::exceptions::{PyBufferError, PyValueError};
+use pyo3::exceptions::{PyBufferError, PyOverflowError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyString};
 
@@ -356,7 +356,7 @@ impl Blake3Class {
     #[pyo3(text_signature = "(length=32, *, seek=0)")]
     fn digest<'p>(&self, py: Python<'p>, length: usize, seek: u64) -> PyResult<&'p PyBytes> {
         if length > isize::max_value() as usize {
-            return Err(PyValueError::new_err("length overflows isize"));
+            return Err(PyOverflowError::new_err("length overflows isize"));
         }
         let mut reader = self.rust_hasher.lock().finalize_xof();
         reader.set_position(seek);
@@ -388,7 +388,7 @@ impl Blake3Class {
     #[pyo3(text_signature = "(length=32, *, seek=0)")]
     fn hexdigest<'p>(&self, py: Python<'p>, length: usize, seek: u64) -> PyResult<&'p PyString> {
         if length > (isize::max_value() / 2) as usize {
-            return Err(PyValueError::new_err("length overflows isize"));
+            return Err(PyOverflowError::new_err("length overflows isize"));
         }
         let bytes = self.digest(py, length, seek)?;
         let hex = hex::encode(bytes.as_bytes());

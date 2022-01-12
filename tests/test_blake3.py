@@ -399,3 +399,16 @@ def test_reset():
     assert hash1 != hash2
     assert hash1 == hash3
     assert hash2 == hash4
+
+
+def test_output_overflows_isize():
+    try:
+        blake3().digest(sys.maxsize + 1)
+        assert False, "should throw"
+    except (OverflowError, MemoryError):
+        pass
+    try:
+        blake3().hexdigest((sys.maxsize // 2) + 1)
+        assert False, "should throw"
+    except (OverflowError, MemoryError):
+        pass
