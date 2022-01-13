@@ -6,7 +6,7 @@ import setuptools
 import subprocess
 import sys
 
-VERSION = "0.0.0"
+VERSION = "0.0.1"
 DESCRIPTION = "experimental bindings for the BLAKE3 C implementation, API-compatible with the Rust-based blake3 module"
 
 unix_asm_files = [
