@@ -45,7 +45,18 @@ static void Blake3_dealloc(Blake3Object *self) {
   Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
-static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
+static PyObject *Blake3_new(PyTypeObject *type, PyObject *args,
+                            PyObject *kwds) {
+  Blake3Object *self = NULL;
+  PyThread_type_lock self_lock = NULL;
+  Py_buffer data = {0};
+  Py_buffer key = {0};
+  const char *derive_key_context = NULL;
+  Py_ssize_t max_threads = 1;
+  bool usedforsecurity = true;
+
+  PyObject *ret = NULL;
+
   static char *kwlist[] = {
       "", // data, positional-only
       "key",
@@ -54,14 +65,6 @@ static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
       "usedforsecurity", // currently ignored
       NULL,
   };
-  Py_buffer data = {0};
-  Py_buffer key = {0};
-  const char *derive_key_context = NULL;
-  Py_ssize_t max_threads = 1;
-  bool usedforsecurity = true;
-
-  int ret = -1;
-
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "|y*$y*snp", kwlist, &data, &key,
                                    &derive_key_context, &max_threads,
                                    &usedforsecurity)) {
@@ -92,6 +95,20 @@ static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
     goto exit;
   }
 
+  self = (Blake3Object *)type->tp_alloc(type, 0);
+  if (self == NULL) {
+    goto exit;
+  }
+
+  // TODO: Hashlib implementations do an optimization where they avoid
+  // allocating this lock unless it's needed. Is that worth it? It would mean
+  // we'd need to handle the possible allocation failure at every lock site.
+  // (Hashlib itself might not be handling these failures correctly.)
+  self_lock = PyThread_allocate_lock();
+  if (self_lock == NULL) {
+    goto exit;
+  }
+
   if (key.obj != NULL) {
     blake3_hasher_init_keyed(&self->hasher, key.buf);
   } else if (derive_key_context != NULL) {
@@ -114,20 +131,19 @@ static int Blake3_init(Blake3Object *self, PyObject *args, PyObject *kwds) {
     }
   }
 
-  // TODO: Hashlib implementations do an optimization where they avoid
-  // allocating this lock unless its needed. Is that worth it? It would mean
-  // we'd need to handle the possible allocation failure at every lock site.
-  // (Notably, hashlib seems not to handle this and allows an unlikely race
-  // condition.)
-  self->lock = PyThread_allocate_lock();
-  if (self->lock == NULL) {
-    goto exit;
-  }
-
   // success
-  ret = 0;
+  self->lock = self_lock;
+  ret = (PyObject *)self;
+  self_lock = NULL; // pass ownership
+  self = NULL;      // pass ownership
 
 exit:
+  if (self != NULL) {
+    Py_TYPE(self)->tp_free((PyObject *)self);
+  }
+  if (self_lock != NULL) {
+    PyThread_free_lock(self_lock);
+  }
   release_buf_if_acquired(&data);
   release_buf_if_acquired(&key);
   return ret;
@@ -284,8 +300,7 @@ static PyTypeObject Blake3Type = {
     .tp_basicsize = sizeof(Blake3Object),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_new = PyType_GenericNew,
-    .tp_init = (initproc) Blake3_init,
+    .tp_new = Blake3_new,
     .tp_dealloc = (destructor) Blake3_dealloc,
     .tp_methods = Blake3_methods,
     // clang-format on
