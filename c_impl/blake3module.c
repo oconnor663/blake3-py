@@ -103,7 +103,8 @@ static PyObject *Blake3_new(PyTypeObject *type, PyObject *args,
   // TODO: Hashlib implementations do an optimization where they avoid
   // allocating this lock unless it's needed. Is that worth it? It would mean
   // we'd need to handle the possible allocation failure at every lock site.
-  // (Hashlib itself might not be handling these failures correctly.)
+  // (Hashlib itself handles these by retaining the GIL rather than reporting
+  // the error.)
   self_lock = PyThread_allocate_lock();
   if (self_lock == NULL) {
     goto exit;
