@@ -1,16 +1,12 @@
 import array
 from binascii import unhexlify
 import json
-import numpy
+
 from pathlib import Path
 import subprocess
 import sys
 
-try:
-    from blake3 import blake3, __version__
-except ModuleNotFoundError:
-    print("Run tests/build.py first.", file=sys.stderr)
-    raise
+from hashlib import blake3
 
 HERE = Path(__file__).parent
 
@@ -148,20 +144,7 @@ def test_int_array_fails():
         assert False, "expected a buffer error"
 
 
-def test_strided_array_fails():
-    unstrided = numpy.array([1, 2, 3, 4], numpy.uint8)
-    strided = numpy.lib.stride_tricks.as_strided(unstrided, shape=[2], strides=[2])
-    assert bytes(strided) == bytes([1, 3])
-    # Unstrided works fine.
-    blake3(unstrided)
-    try:
-        # But strided fails.
-        blake3(strided)
-    # We get BufferError in Rust and ValueError in C.
-    except (BufferError, ValueError):
-        pass
-    else:
-        assert False, "expected a buffer error"
+# numpy doesn't work on Python 3.11 yet
 
 
 def test_string_fails():
@@ -285,12 +268,7 @@ def test_copy_with_threads():
     ), "Update state of copy diverged from expected state"
 
 
-def test_version():
-    # Just sanity check that it's a version string. Don't assert the specific
-    # version, both because we don't want to bother with parsing Cargo.toml,
-    # and because these tests might be reused to test C bindings.
-    assert type(__version__) is str
-    assert len(__version__.split(".")) == 3
+# The hashlib implementation will not have a __version__.
 
 
 def test_invalid_max_threads():
