@@ -53,7 +53,7 @@ static PyObject *Blake3_new(PyTypeObject *type, PyObject *args,
   Py_buffer key = {0};
   const char *derive_key_context = NULL;
   Py_ssize_t max_threads = 1;
-  bool usedforsecurity = true;
+  int usedforsecurity = 1;
 
   PyObject *ret = NULL;
 
