@@ -414,7 +414,8 @@ PyMODINIT_FUNC PyInit_blake3(void) {
     goto exit;
   }
 
-  if (PyModule_AddObjectRef(module, "blake3", (PyObject *)&Blake3Type) < 0) {
+  if (PyModule_AddObject(module, "blake3", (PyObject *)&Blake3Type) < 0) {
+    Py_DECREF((PyObject *)&Blake3Type);
     goto exit;
   }
 
