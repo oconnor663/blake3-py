@@ -66,7 +66,7 @@ def targeting_x86_32():
 
 
 def is_aarch64():
-    return platform.machine().lower() == "aarch64"
+    return platform.machine().lower() in ("aarch64", "arm64")
 
 
 def force_intrinsics():
