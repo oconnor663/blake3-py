@@ -64,7 +64,7 @@ jobs:
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.8", "3.9", "3.10"]
         platform: [
           # This list should be kept in sync with tag.yml.
           { os: "ubuntu-latest",  python-architecture: "x64", name: "Linux x64" },
