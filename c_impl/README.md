@@ -22,7 +22,7 @@ this module with the usual commands like
 pip install .
 ```
 
-Python 3.10 (or greater, hopefully) is required.
+Python 3.8 or later is required.
 
 The build implements the following decision tree, which is [documented in
 greater detail
