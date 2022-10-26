@@ -24,7 +24,10 @@ if platform.system() == "Linux":
         (3, 8): "cp38-cp38",
         (3, 9): "cp39-cp39",
         (3, 10): "cp310-cp310",
-        # This list needs to be kept in sync with push.yml and tag.yml.
+        (3, 11): "cp311-cp311",
+        # This list needs to be kept in sync with:
+        #   - push.yml (rust_impl and c_impl)
+        #   - tag.yml
     }
     version_component = version_path_components[sys.version_info[:2]]
     interpreter_path = "/opt/python/" + version_component + "/bin/python"

@@ -11,7 +11,10 @@ jobs:
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"] # This list needs to be kept in sync with push.yml and maturin_build_wheel.py.
+        # This list needs to be kept in sync with:
+        #   - push.yml (rust_impl and c_impl)
+        #   - maturin_build_wheel.py
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
         platform: [
           # This list should be kept in sync with push.yml.
           { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu", name: "Linux x64" },

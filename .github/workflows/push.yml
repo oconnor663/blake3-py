@@ -12,7 +12,11 @@ jobs:
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"] # This list needs to be kept in sync with tag.yml and maturin_build_wheel.py.
+        # This list needs to be kept in sync with:
+        #   - tag.yml
+        #   - maturin_build_wheel.py
+        #   - the c_impl tests below
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
         rust-toolchain: [stable, beta, nightly]
         platform: [
           # This list should be kept in sync with tag.yml.
@@ -64,7 +68,11 @@ jobs:
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+        # This list needs to be kept in sync with:
+        #   - tag.yml
+        #   - maturin_build_wheel.py
+        #   - the rust_impl tests above
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
         platform: [
           # This list should be kept in sync with tag.yml.
           { os: "ubuntu-latest",  python-architecture: "x64", name: "Linux x64" },
