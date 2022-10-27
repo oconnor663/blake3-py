@@ -91,6 +91,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.platform.python-architecture }}
       - run: python tests/python_info.py
+      - run: pip install --upgrade setuptools
       - name: build the C extension
         run: python setup.py build
         working-directory: c_impl
