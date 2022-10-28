@@ -1,4 +1,5 @@
 from collections import namedtuple
+from distutils import ccompiler
 import os
 from os import path
 import platform
@@ -76,7 +77,7 @@ def force_intrinsics():
 def compile_x86_intrinsics():
     object_files = []
     for filepath, unix_flags, win_flags in x86_intrinsics_files:
-        cc = setuptools.distutils.ccompiler.new_compiler()
+        cc = ccompiler.new_compiler()
         if is_windows():
             args = ["/O2"] + win_flags
         else:
