@@ -159,12 +159,7 @@ def prepare_extension():
         print("portable code only")
 
     def escape_preprocessor_string(s):
-        # I don't know why this Python-3.8-specific, Windows-specific
-        # workaround is needed, but it is.
-        if is_windows() and sys.version_info[:2] <= (3, 8):
-            return '\\"' + s + '\\"'
-        else:
-            return '"' + s + '"'
+        return '"' + s + '"'
 
     return setuptools.Extension(
         "blake3",
