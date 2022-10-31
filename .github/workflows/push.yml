@@ -16,7 +16,7 @@ jobs:
         #   - tag.yml
         #   - maturin_build_wheel.py
         #   - the c_impl tests below
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         rust-toolchain: [stable, beta, nightly]
         platform: [
           # This list should be kept in sync with tag.yml.
@@ -28,10 +28,6 @@ jobs:
         ]
         exclude:
           # aarch64 macOS has no support for Python version lower than 3.8
-          - python-version: 3.6
-            platform:
-              os: "macOS-11"
-              rust-target: "aarch64-apple-darwin"
           - python-version: 3.7
             platform:
               os: "macOS-11"

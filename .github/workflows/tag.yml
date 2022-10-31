@@ -14,7 +14,7 @@ jobs:
         # This list needs to be kept in sync with:
         #   - push.yml (rust_impl and c_impl)
         #   - maturin_build_wheel.py
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         platform: [
           # This list should be kept in sync with push.yml.
           { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu", name: "Linux x64" },
@@ -25,10 +25,6 @@ jobs:
         ]
         exclude:
           # aarch64 macOS has no support for Python version lower than 3.8
-          - python-version: 3.6
-            platform:
-              os: "macOS-11"
-              rust-target: "aarch64-apple-darwin"
           - python-version: 3.7
             platform:
               os: "macOS-11"
