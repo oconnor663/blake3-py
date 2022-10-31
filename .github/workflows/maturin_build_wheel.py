@@ -37,11 +37,10 @@ if platform.system() == "Linux":
         "run",
         "--rm",
         "--volume=" + os.getcwd() + ":/io",
-        "--env=BLAKE3_CI=1", # don't allow fallbacks for missing AVX-512 support
+        "--env=BLAKE3_CI=1",  # don't allow fallbacks for missing AVX-512 support
         "konstin2/maturin",
         "build",
         "--release",
-        "--no-sdist",
         "--interpreter",
         interpreter_path,
     ]
@@ -51,7 +50,6 @@ else:
         "maturin",
         "build",
         "--release",
-        "--no-sdist",
         "--interpreter",
         sys.executable,
     ]
