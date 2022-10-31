@@ -45,6 +45,10 @@ def is_windows():
     return sys.platform.startswith("win32")
 
 
+def is_macos():
+    return sys.platform.startswith("darwin")
+
+
 def targeting_x86_64():
     # We use *Python's* word size to determine whether we're targeting 64-bit,
     # not the machine's.
@@ -76,15 +80,90 @@ def force_intrinsics():
 
 def compile_x86_intrinsics():
     object_files = []
-    for filepath, unix_flags, win_flags in x86_intrinsics_files:
+    for (
+        filepath,
+        unix_intrinsics_flags,
+        windows_intrinsics_flags,
+    ) in x86_intrinsics_files:
         cc = ccompiler.new_compiler()
         if is_windows():
-            args = ["/O2"] + win_flags
+            args = ["/O2"] + windows_intrinsics_flags
         else:
-            args = ["-O3"] + unix_flags
+            args = ["-O3"] + unix_intrinsics_flags
         print(f"compiling {filepath} with {args}")
         object_files += cc.compile([filepath], extra_preargs=args)
     return object_files
+
+
+def compile_macos_universal_staticlib():
+    assert is_macos()
+
+    def run(command):
+        print(" ".join(command))
+        subprocess.run(command, check=True)
+
+    # Build the x86 implementations (either asm or intrinsics). There are
+    # several of them, so wrap them in into a .a file. The `lipo` tool wants
+    # one file per architecture.
+    x86_object_files = []
+    if force_intrinsics():
+        for filepath, unix_intrinsics_flags, _ in x86_intrinsics_files:
+            output = filepath.replace(".c", ".o")
+            run(
+                [
+                    "clang",
+                    "-arch",
+                    "x86_64",
+                    "-O3",
+                    *unix_intrinsics_flags,
+                    "-c",
+                    filepath,
+                    "-o",
+                    output,
+                ]
+            )
+            x86_object_files.append(output)
+    else:
+        for filepath in unix_asm_files:
+            output = filepath.replace(".S", ".o")
+            run(["clang", "-arch", "x86_64", "-c", filepath, "-o", output])
+            x86_object_files.append(output)
+    x86_staticlib = "vendor/blake3_x86.a"
+    run(["ar", "rcs", x86_staticlib, *x86_object_files])
+
+    # Build the ARM NEON implementation, which is currently just intrinsics.
+    # Since this is one file we don't need a .a file.
+    neon_output = "vendor/blake3_neon.o"
+    run(
+        [
+            "clang",
+            "-arch",
+            "arm64",
+            "-O3",
+            "-c",
+            "vendor/blake3_neon.c",
+            "-o",
+            neon_output,
+        ]
+    )
+
+    # Package the x86 output and the ARM output into a single "universal"
+    # staticlib. Note that these define different functions with
+    # architecture-specific names, but blake3_dispatch.c will end up getting
+    # compiled for both architectures and calling the right functions in each
+    # case.
+    universal_output = "vendor/blake3_universal.a"
+    run(
+        [
+            "lipo",
+            "-create",
+            x86_staticlib,
+            neon_output,
+            "-output",
+            universal_output,
+        ]
+    )
+    return [universal_output]
 
 
 def windows_ml64_path():
@@ -134,7 +213,11 @@ def prepare_extension():
     ]
     target = platform.machine()
     extra_objects = []
-    if targeting_x86_64() and not force_intrinsics():
+    if is_macos():
+        # On macOS we build a "universal" binary containing both x86 and ARM
+        # code.
+        extra_objects = compile_macos_universal_staticlib()
+    elif targeting_x86_64() and not force_intrinsics():
         if is_windows():
             print("including x86-64 MSVC assembly")
             # The cl.exe compiler on Windows doesn't support .asm files, so we
