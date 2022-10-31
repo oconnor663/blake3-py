@@ -38,7 +38,7 @@ if platform.system() == "Linux":
         "--rm",
         "--volume=" + os.getcwd() + ":/io",
         "--env=BLAKE3_CI=1",  # don't allow fallbacks for missing AVX-512 support
-        "konstin2/maturin",
+        "ghcr.io/pyo3/maturin",
         "build",
         "--release",
         "--interpreter",
