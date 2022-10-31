@@ -28,6 +28,9 @@ The build implements the following decision tree, which is [documented in
 greater detail
 upstream](https://github.com/BLAKE3-team/BLAKE3/tree/master/c#building):
 
+- Are we building on macOS?
+    - Combine the Unix assembly files and the NEON intrinsics implementation
+      into a "universal" binary using the `lipo` tool.
 - Are we targetting x86-64?
     - Are we targetting Windows?
         - Include the MSVC assembly files.
