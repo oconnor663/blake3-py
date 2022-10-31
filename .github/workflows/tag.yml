@@ -51,7 +51,8 @@ jobs:
           default: true
           profile: minimal
       - name: install maturin
-        run: pip install maturin
+        # Keep the Maturin version in sync with pyproject.toml.
+        run: pip install "maturin>=0.13,<0.14"
         # On Linux we'll run Maturin in a Docker container.
         if: matrix.platform.os != 'ubuntu-latest'
       - name: build wheel
