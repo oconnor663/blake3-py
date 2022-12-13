@@ -1,3 +1,5 @@
+extern crate blake3 as upstream_blake3;
+
 use pyo3::buffer::PyBuffer;
 use pyo3::exceptions::{PyBufferError, PyOverflowError, PyValueError};
 use pyo3::prelude::*;
@@ -164,7 +166,7 @@ impl Clone for ThreadingMode {
 struct Blake3Class {
     // We release the GIL while updating this hasher, which means that other
     // threads could race to access it. Putting it in a Mutex keeps it safe.
-    rust_hasher: Mutex<blake3::Hasher>,
+    rust_hasher: Mutex<upstream_blake3::Hasher>,
     threading_mode: ThreadingMode,
 }
 
@@ -216,7 +218,7 @@ impl Blake3Class {
 
         let mut rust_hasher = match (key, derive_key_context) {
             // The default, unkeyed hash function.
-            (None, None) => blake3::Hasher::new(),
+            (None, None) => upstream_blake3::Hasher::new(),
             // The keyed hash function.
             (Some(key_buf), None) => {
                 // Use the same function to get the key buffer as `update` uses
@@ -232,10 +234,10 @@ impl Blake3Class {
                     let msg = format!("expected a {}-byte key, found {}", 32, key_slice.len());
                     return Err(PyValueError::new_err(msg));
                 };
-                blake3::Hasher::new_keyed(key_array)
+                upstream_blake3::Hasher::new_keyed(key_array)
             }
             // The key derivation function.
-            (None, Some(context)) => blake3::Hasher::new_derive_key(context),
+            (None, Some(context)) => upstream_blake3::Hasher::new_derive_key(context),
             // Error: can't use both modes at the same time.
             (Some(_), Some(_)) => {
                 return Err(PyValueError::new_err(
