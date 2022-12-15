@@ -24,14 +24,6 @@ windows_msvc_asm_files = [
     "vendor/blake3_avx512_x86-64_windows_msvc.asm",
 ]
 
-# TODO: Do we need these?
-windows_gnu_asm_files = [
-    "vendor/blake3_sse2_x86-64_windows_gnu.S",
-    "vendor/blake3_sse41_x86-64_windows_gnu.S",
-    "vendor/blake3_avx2_x86-64_windows_gnu.S",
-    "vendor/blake3_avx512_x86-64_windows_gnu.S",
-]
-
 # path, unix_flags, win_flags
 x86_intrinsics_files = [
     ("vendor/blake3_sse2.c", ["-msse2"], []),
