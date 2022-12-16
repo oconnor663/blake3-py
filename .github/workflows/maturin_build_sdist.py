@@ -1,13 +1,9 @@
 #! /usr/bin/env python3
 
 from pathlib import Path
-import shutil
 import subprocess
 
 ROOT = Path(__file__).parent.parent.parent
-
-# Workaround for https://github.com/PyO3/maturin/pull/27
-shutil.copy2(ROOT / "Cargo.toml", ROOT / "Cargo.toml.orig")
 
 subprocess.run(["maturin", "sdist"], check=True)
 
