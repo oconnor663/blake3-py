@@ -212,7 +212,7 @@ def test_xof():
 
 
 def test_max_threads_value():
-    b = make_input(10 ** 6)
+    b = make_input(10**6)
     expected = blake3(b).digest()
     assert expected == blake3(b, max_threads=2).digest()
     incremental = blake3()
@@ -221,7 +221,7 @@ def test_max_threads_value():
 
 
 def test_max_threads_auto():
-    b = make_input(10 ** 6)
+    b = make_input(10**6)
     expected = blake3(b).digest()
     assert expected == blake3(b, max_threads=blake3.AUTO).digest()
     incremental = blake3()
@@ -245,8 +245,8 @@ def test_name():
 
 
 def test_copy_basic():
-    b = make_input(10 ** 6)
-    b2 = make_input(10 ** 6)
+    b = make_input(10**6)
+    b2 = make_input(10**6)
     h1 = blake3(b)
     expected = h1.digest()
     h2 = h1.copy()
@@ -261,9 +261,9 @@ def test_copy_basic():
 def test_copy_with_threads():
     """This test is somewhat redundant and takes a belt-and-suspenders approach. If the rest
     of the tests pass but this test fails, something *very* weird is going on."""
-    b = make_input(10 ** 6)
-    b2 = make_input(10 ** 6)
-    b3 = make_input(10 ** 6)
+    b = make_input(10**6)
+    b2 = make_input(10**6)
+    b3 = make_input(10**6)
 
     h1 = blake3(b, max_threads=2)
     expected = h1.digest()
