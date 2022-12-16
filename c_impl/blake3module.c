@@ -296,7 +296,7 @@ static PyTypeObject Blake3Type = {
     // semicolon after PyObject_HEAD_INIT.
     // clang-format off
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "blake3",
+    .tp_name = "blake3.blake3",
     .tp_doc = "an incremental BLAKE3 hasher",
     .tp_basicsize = sizeof(Blake3Object),
     .tp_itemsize = 0,

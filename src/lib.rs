@@ -147,7 +147,7 @@ impl Clone for ThreadingMode {
 ///   may also ignore this parameter entirely, if they don't support
 ///   multithreading.
 /// - `usedforsecurity`: Currently ignored. See the standard hashlib docs.
-#[pyclass(name = "blake3")]
+#[pyclass(name = "blake3", module = "blake3")]
 #[pyo3(
     text_signature = "(data=b'', /, *, key=None, derive_key_context=None, max_threads=1, usedforsecurity=True)"
 )]

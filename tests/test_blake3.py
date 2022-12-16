@@ -412,3 +412,7 @@ def test_output_overflows_isize():
         assert False, "should throw"
     except (OverflowError, MemoryError):
         pass
+
+
+def test_module_name():
+    assert blake3.__module__ == "blake3"
