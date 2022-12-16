@@ -9,7 +9,7 @@ ROOT = Path(__file__).parent.parent.parent
 # Workaround for https://github.com/PyO3/maturin/pull/27
 shutil.copy2(ROOT / "Cargo.toml", ROOT / "Cargo.toml.orig")
 
-subprocess.run(["maturin", "sdist"])
+subprocess.run(["maturin", "sdist"], check=True)
 
 sdists = [x for x in (ROOT / "target" / "wheels").iterdir()]
 if len(sdists) != 1:
