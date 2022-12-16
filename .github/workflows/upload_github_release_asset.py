@@ -3,6 +3,7 @@
 import github
 import os
 import sys
+import time
 
 RETRIES = 10
 
@@ -10,11 +11,11 @@ g = github.Github(os.environ["GITHUB_TOKEN"])
 tag_name = os.environ["GITHUB_TAG"]
 tag_prefix = "refs/tags/"
 if tag_name.startswith(tag_prefix):
-    tag_name = tag_name[len(tag_prefix):]
+    tag_name = tag_name[len(tag_prefix) :]
 rerelease_suffix = "_rerelease"
 is_rerelease_tag = False
 if tag_name.endswith(rerelease_suffix):
-    tag_name = tag_name[:len(tag_name) - len(rerelease_suffix)]
+    tag_name = tag_name[: len(tag_name) - len(rerelease_suffix)]
     print("This is a rerelease of {}.".format(tag_name))
     is_rerelease_tag = True
 assert len(sys.argv) == 2
@@ -40,12 +41,20 @@ except github.GithubException as github_error:
     else:
         raise
 
-releases = list(repo.get_releases())
-for release in releases:
-    if release.tag_name == tag_name:
-        break
-else:
+
+def get_release():
+    for i in range(RETRIES):
+        releases = list(repo.get_releases())
+        for release in releases:
+            if release.tag_name == tag_name:
+                return release
+        print(f"Release for tag {repr(tag_name)} not found. Retrying...")
+        time.sleep(1)
     raise RuntimeError("no release for tag " + repr(tag_name))
+
+
+release = get_release()
+
 
 asset_already_released = False
 if is_rerelease_tag:
