@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import os
 from pathlib import Path
 import subprocess
 
@@ -11,5 +12,5 @@ sdists = [x for x in (ROOT / "target" / "wheels").iterdir()]
 if len(sdists) != 1:
     raise RuntimeError("expected one sdist, found " + repr(sdists))
 
-print("::set-output name=sdist_path::" + str(sdists[0]))
-print("::set-output name=sdist_name::" + sdists[0].name)
+with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+    output.write(f"sdist_path={str(sdists[0])}\n")

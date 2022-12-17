@@ -58,5 +58,5 @@ wheels = [x for x in (ROOT / "target" / "wheels").iterdir()]
 if len(wheels) != 1:
     raise RuntimeError("expected one wheel, found " + repr(wheels))
 
-print("::set-output name=wheel_path::" + str(wheels[0]))
-print("::set-output name=wheel_name::" + wheels[0].name)
+with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+    output.write(f"wheel_path={str(wheels[0])}\n")
