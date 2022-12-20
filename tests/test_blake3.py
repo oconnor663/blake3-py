@@ -414,5 +414,12 @@ def test_output_overflows_isize():
         pass
 
 
+# Currently the canonical path of the Rust implementation is
+# `blake3.blake3.blake3`, while the canonical path of the C implementation is
+# `blake3.blake3`. Both implementations should pass this test. See also:
+# https://github.com/mkdocstrings/mkdocstrings/issues/451 and
+# https://github.com/PyO3/maturin/discussions/1365
 def test_module_name():
-    assert blake3.__module__ == "blake3"
+    global_scope = {}
+    exec(f"from {blake3.__module__} import blake3 as foobar", global_scope)
+    assert global_scope["foobar"] is blake3

@@ -147,7 +147,17 @@ impl Clone for ThreadingMode {
 ///   may also ignore this parameter entirely, if they don't support
 ///   multithreading.
 /// - `usedforsecurity`: Currently ignored. See the standard hashlib docs.
-#[pyclass(name = "blake3", module = "blake3")]
+// Note: The "blake3.blake3.blake3" canonical path is a Maturin implementation detail. See
+// https://github.com/mkdocstrings/mkdocstrings/issues/451 for why we expose it here. That means
+// that both of these work today, though most callers should prefer the first one:
+//
+//   # Import the re-exported blake3 class from the top-level module. This is stable. Do this.
+//   from blake3 import blake3
+//
+//   # Import the blake3 class from its canonical path. Avoid this in regular code, because the
+//   # canonical path is an internal implementation detail, and it could change in the future.
+//   from blake3.blake3 import blake3
+#[pyclass(name = "blake3", module = "blake3.blake3")]
 #[pyo3(
     text_signature = "(data=b'', /, *, key=None, derive_key_context=None, max_threads=1, usedforsecurity=True)"
 )]
