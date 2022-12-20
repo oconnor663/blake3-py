@@ -1,8 +1,8 @@
-use parking_lot::Mutex;
 use pyo3::buffer::PyBuffer;
 use pyo3::exceptions::{PyBufferError, PyOverflowError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyString};
+use std::sync::Mutex;
 
 // This is the same as HASHLIB_GIL_MINSIZE in CPython.
 const GIL_MINSIZE: usize = 2048;
@@ -306,13 +306,13 @@ impl Blake3Class {
 
         let mut update_closure = || match &mut self.threading_mode {
             ThreadingMode::Single => {
-                self.rust_hasher.lock().update(slice);
+                self.rust_hasher.lock().unwrap().update(slice);
             }
             ThreadingMode::Auto => {
-                self.rust_hasher.lock().update_rayon(slice);
+                self.rust_hasher.lock().unwrap().update_rayon(slice);
             }
             ThreadingMode::Pool { pool, .. } => pool.install(|| {
-                self.rust_hasher.lock().update_rayon(slice);
+                self.rust_hasher.lock().unwrap().update_rayon(slice);
             }),
         };
 
@@ -336,7 +336,7 @@ impl Blake3Class {
     #[pyo3(text_signature = "()")]
     fn copy(&self) -> Blake3Class {
         Blake3Class {
-            rust_hasher: Mutex::new(self.rust_hasher.lock().clone()),
+            rust_hasher: Mutex::new(self.rust_hasher.lock().unwrap().clone()),
             threading_mode: self.threading_mode.clone(),
         }
     }
@@ -349,7 +349,7 @@ impl Blake3Class {
     #[args()]
     #[pyo3(text_signature = "()")]
     fn reset(&mut self) {
-        self.rust_hasher.lock().reset();
+        self.rust_hasher.lock().unwrap().reset();
     }
 
     /// Finalize the hasher and return the resulting hash as bytes. This
@@ -368,7 +368,7 @@ impl Blake3Class {
         if length > isize::max_value() as usize {
             return Err(PyOverflowError::new_err("length overflows isize"));
         }
-        let mut reader = self.rust_hasher.lock().finalize_xof();
+        let mut reader = self.rust_hasher.lock().unwrap().finalize_xof();
         reader.set_position(seek);
         PyBytes::new_with(py, length, |slice| {
             debug_assert_eq!(length, slice.len());
