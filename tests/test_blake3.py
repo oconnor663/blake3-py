@@ -6,11 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-try:
-    from blake3 import blake3, __version__
-except ModuleNotFoundError:
-    print("Run tests/build.py first.", file=sys.stderr)
-    raise
+from blake3 import blake3, __version__
 
 HERE = Path(__file__).parent
 

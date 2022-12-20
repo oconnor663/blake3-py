@@ -53,8 +53,8 @@ jobs:
       # We use numpy to test the error case of trying to hash a strided buffer.
       - name: Install pytest and numpy
         run: pip install pytest numpy
-      - name: Run build.py
-        run: python -u tests/build.py
+      - name: Build and install the blake3 module
+        run: pip install .
       - name: Run pytest
         if: ${{ matrix.platform.rust-target != 'aarch64-apple-darwin' }}
         run: python -u -m pytest --verbose

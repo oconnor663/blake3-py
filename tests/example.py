@@ -2,12 +2,7 @@
 
 import sys
 
-# Run ./build.py first, which puts the blake3 shared library in this directory.
-try:
-    import blake3
-except ModuleNotFoundError:
-    print("Run tests/build.py first.", file=sys.stderr)
-    sys.exit(1)
+from blake3 import blake3
 
 # Open the input file, if a command line argument is provided. Otherwise read
 # from stdin.
@@ -18,7 +13,7 @@ else:
     input_file = sys.stdin.buffer
 
 # Hash stdin in 64 KiB chunks.
-hasher = blake3.blake3()
+hasher = blake3()
 buf = memoryview(bytearray(65536))
 while True:
     n = input_file.readinto(buf)
