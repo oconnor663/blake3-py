@@ -160,9 +160,6 @@ impl Clone for ThreadingMode {
 //   # canonical path is an internal implementation detail, and it could change in the future.
 //   from blake3.blake3 import blake3
 #[pyclass(name = "blake3", module = "blake3.blake3")]
-#[pyo3(
-    text_signature = "(data=b'', /, *, key=None, derive_key_context=None, max_threads=1, usedforsecurity=True)"
-)]
 struct Blake3Class {
     // We release the GIL while updating this hasher, which means that other
     // threads could race to access it. Putting it in a Mutex keeps it safe.
@@ -197,15 +194,15 @@ impl Blake3Class {
     const AUTO: isize = -1;
 
     #[new]
-    #[args(
-        data,
-        "/",
-        "*",
-        key = "None",
-        derive_key_context = "None",
-        max_threads = "1",
-        usedforsecurity = "true"
-    )]
+    #[pyo3(signature = (
+        data = None,
+        /,
+        *,
+        key = None,
+        derive_key_context = None,
+        max_threads = 1,
+        usedforsecurity = true
+    ))]
     fn new(
         py: Python,
         data: Option<&PyAny>,
@@ -298,8 +295,7 @@ impl Blake3Class {
     ///
     /// Arguments:
     /// - `data` (required): The input bytes.
-    #[args(data, "/")]
-    #[pyo3(text_signature = "(data, /)")]
+    #[pyo3(signature=(data, /))]
     fn update(&mut self, py: Python, data: &PyAny) -> PyResult<()> {
         // Get a slice that's not tied to the `py` lifetime.
         // XXX: The safety situation here is a bit complicated. See all the
@@ -334,8 +330,7 @@ impl Blake3Class {
     /// Return a copy (“clone”) of the hasher. This can be used to
     /// efficiently compute the digests of data sharing a common initial
     /// substring.
-    #[args()]
-    #[pyo3(text_signature = "()")]
+    #[pyo3(signature=())]
     fn copy(&self) -> Blake3Class {
         Blake3Class {
             rust_hasher: Mutex::new(self.rust_hasher.lock().unwrap().clone()),
@@ -348,8 +343,7 @@ impl Blake3Class {
     /// greater than 1), resetting the hasher lets you reuse that pool.
     /// Note that if any input bytes were supplied in the original
     /// construction of the hasher, those bytes are *not* replayed.
-    #[args()]
-    #[pyo3(text_signature = "()")]
+    #[pyo3(signature=())]
     fn reset(&mut self) {
         self.rust_hasher.lock().unwrap().reset();
     }
@@ -364,8 +358,7 @@ impl Blake3Class {
     ///   prefixes of longer ones. Defaults to 32.
     /// - `seek`: The starting byte position in the output stream. Defaults
     ///   to 0.
-    #[args(length = "32", "*", seek = "0")]
-    #[pyo3(text_signature = "(length=32, *, seek=0)")]
+    #[pyo3(signature=(length=32, *, seek=0))]
     fn digest<'p>(&self, py: Python<'p>, length: usize, seek: u64) -> PyResult<&'p PyBytes> {
         if length > isize::max_value() as usize {
             return Err(PyOverflowError::new_err("length overflows isize"));
@@ -396,8 +389,7 @@ impl Blake3Class {
     ///   that shorter outputs are prefixes of longer ones. Defaults to 32.
     /// - `seek`: The starting byte position in the output stream, prior to
     ///   hex encoding. Defaults to 0.
-    #[args(length = "32", "*", seek = "0")]
-    #[pyo3(text_signature = "(length=32, *, seek=0)")]
+    #[pyo3(signature=(length=32, *, seek=0))]
     fn hexdigest<'p>(&self, py: Python<'p>, length: usize, seek: u64) -> PyResult<&'p PyString> {
         if length > (isize::max_value() / 2) as usize {
             return Err(PyOverflowError::new_err("length overflows isize"));
