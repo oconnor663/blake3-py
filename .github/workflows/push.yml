@@ -108,3 +108,18 @@ jobs:
         run: pip install pytest numpy
       - name: Run pytest
         run: python -u -m pytest --verbose
+
+  mypy:
+    name: "mypy"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      # We use numpy to test the error case of trying to hash a strided buffer.
+      - name: Install pytest, numpy, and mypy
+        run: pip install pytest numpy mypy
+      - name: Run mypy
+        run: python -u -m mypy --strict tests/test_blake3.py

@@ -5,6 +5,7 @@ import numpy
 from pathlib import Path
 import subprocess
 import sys
+from typing import Any
 
 from blake3 import blake3, __version__
 
@@ -13,14 +14,14 @@ HERE = Path(__file__).parent
 VECTORS = json.load((HERE / "test_vectors.json").open())
 
 
-def make_input(length):
+def make_input(length: int) -> bytes:
     b = bytearray(length)
     for i in range(len(b)):
         b[i] = i % 251
     return b
 
 
-def test_vectors():
+def test_vectors() -> None:
     cases = VECTORS["cases"]
     for case in cases:
         input_len = int(case["input_len"])
@@ -78,16 +79,18 @@ def test_vectors():
         assert derive_key_bytes == incremental_derive_key.digest()
 
 
-def test_buffer_types():
+def test_buffer_types() -> None:
     expected = blake3(b"foo").digest()
     assert expected == blake3(memoryview(b"foo")).digest()
     assert expected == blake3(bytearray(b"foo")).digest()
     assert expected == blake3(memoryview(bytearray(b"foo"))).digest()
     # "B" means unsigned char. See https://docs.python.org/3/library/array.html.
-    assert expected == blake3(array.array("B", b"foo")).digest()
+    # TODO: un-ignore this line when PEP 688 lands in Python 3.12
+    assert expected == blake3(array.array("B", b"foo")).digest()  # type: ignore
     assert expected == blake3(memoryview(array.array("B", b"foo"))).digest()
     # "b" means (signed) char.
-    assert expected == blake3(array.array("b", b"foo")).digest()
+    # TODO: un-ignore this line when PEP 688 lands in Python 3.12
+    assert expected == blake3(array.array("b", b"foo")).digest()  # type: ignore
     assert expected == blake3(memoryview(array.array("b", b"foo"))).digest()
 
     incremental = blake3()
@@ -95,14 +98,16 @@ def test_buffer_types():
     incremental.update(memoryview(b"two"))
     incremental.update(bytearray(b"three"))
     incremental.update(memoryview(bytearray(b"four")))
-    incremental.update(array.array("B", b"five"))
+    # TODO: un-ignore this line when PEP 688 lands in Python 3.12
+    incremental.update(array.array("B", b"five"))  # type: ignore
     incremental.update(memoryview(array.array("B", b"six")))
-    incremental.update(array.array("b", b"seven"))
+    # TODO: un-ignore this line when PEP 688 lands in Python 3.12
+    incremental.update(array.array("b", b"seven"))  # type: ignore
     incremental.update(memoryview(array.array("b", b"eight")))
     assert incremental.digest() == blake3(b"onetwothreefourfivesixseveneight").digest()
 
 
-def test_key_types():
+def test_key_types() -> None:
     key = bytes([42]) * 32
     expected = blake3(b"foo", key=key).digest()
     # Check that we can use a bytearray or a memoryview to get the same result.
@@ -110,7 +115,7 @@ def test_key_types():
     assert expected == blake3(b"foo", key=memoryview(key)).digest()
 
 
-def test_invalid_key_lengths():
+def test_invalid_key_lengths() -> None:
     for key_length in range(0, 100):
         key = b"\xff" * key_length
         if key_length == blake3.key_size:
@@ -125,10 +130,11 @@ def test_invalid_key_lengths():
                 pass
 
 
-def test_int_array_fails():
+def test_int_array_fails() -> None:
     try:
         # "i" represents the int type, which is larger than a char.
-        blake3(array.array("i"))
+        # TODO: un-ignore this line when PEP 688 lands in Python 3.12
+        blake3(array.array("i"))  # type: ignore
     # We get BufferError in Rust and ValueError in C.
     except (BufferError, ValueError):
         pass
@@ -137,22 +143,25 @@ def test_int_array_fails():
 
     # The same thing, but with the update method.
     try:
-        blake3().update(array.array("i"))
+        # TODO: un-ignore this line when PEP 688 lands in Python 3.12
+        blake3().update(array.array("i"))  # type: ignore
     except (BufferError, ValueError):
         pass
     else:
         assert False, "expected a buffer error"
 
 
-def test_strided_array_fails():
+def test_strided_array_fails() -> None:
     unstrided = numpy.array([1, 2, 3, 4], numpy.uint8)
     strided = numpy.lib.stride_tricks.as_strided(unstrided, shape=[2], strides=[2])
     assert bytes(strided) == bytes([1, 3])
     # Unstrided works fine.
-    blake3(unstrided)
+    # TODO: un-ignore this line when PEP 688 lands in Python 3.12
+    blake3(unstrided)  # type: ignore
     try:
         # But strided fails.
-        blake3(strided)
+        # TODO: un-ignore this line when PEP 688 lands in Python 3.12
+        blake3(strided)  # type: ignore
     # We get BufferError in Rust and ValueError in C.
     except (BufferError, ValueError):
         pass
@@ -160,16 +169,16 @@ def test_strided_array_fails():
         assert False, "expected a buffer error"
 
 
-def test_string_fails():
+def test_string_fails() -> None:
     try:
-        blake3("a string")
+        blake3("a string")  # type: ignore
     except TypeError:
         pass
     else:
         assert False, "expected a type error"
 
 
-def test_constants():
+def test_constants() -> None:
     # These are class attributes, so they should work on the class itself and
     # also on instances of the class.
     assert blake3.name == "blake3"
@@ -184,7 +193,7 @@ def test_constants():
     assert blake3().AUTO == -1
 
 
-def test_example_dot_py():
+def test_example_dot_py() -> None:
     hello_hash = "d74981efa70a0c880b8d8c1985d075dbcbf679b99a5f9914e5aaf96b831a9e24"
     output = (
         subprocess.run(
@@ -199,7 +208,7 @@ def test_example_dot_py():
     assert output == hello_hash
 
 
-def test_xof():
+def test_xof() -> None:
     extended = blake3(b"foo").digest(length=100)
 
     for i in range(100):
@@ -207,7 +216,7 @@ def test_xof():
         assert extended[i:] == blake3(b"foo").digest(length=100 - i, seek=i)
 
 
-def test_max_threads_value():
+def test_max_threads_value() -> None:
     b = make_input(10**6)
     expected = blake3(b).digest()
     assert expected == blake3(b, max_threads=2).digest()
@@ -216,7 +225,7 @@ def test_max_threads_value():
     assert expected == incremental.digest()
 
 
-def test_max_threads_auto():
+def test_max_threads_auto() -> None:
     b = make_input(10**6)
     expected = blake3(b).digest()
     assert expected == blake3(b, max_threads=blake3.AUTO).digest()
@@ -225,7 +234,7 @@ def test_max_threads_auto():
     assert expected == incremental.digest()
 
 
-def test_key_context_incompatible():
+def test_key_context_incompatible() -> None:
     zero_key = bytearray(32)
     try:
         blake3(b"foo", key=zero_key, derive_key_context="")
@@ -235,12 +244,12 @@ def test_key_context_incompatible():
         assert False, "expected a type error"
 
 
-def test_name():
+def test_name() -> None:
     b = blake3()
     assert b.name == "blake3"
 
 
-def test_copy_basic():
+def test_copy_basic() -> None:
     b = make_input(10**6)
     b2 = make_input(10**6)
     h1 = blake3(b)
@@ -254,7 +263,7 @@ def test_copy_basic():
     assert expected2 == h2.digest(), "Update state of copy diverged from expected state"
 
 
-def test_copy_with_threads():
+def test_copy_with_threads() -> None:
     """This test is somewhat redundant and takes a belt-and-suspenders approach. If the rest
     of the tests pass but this test fails, something *very* weird is going on."""
     b = make_input(10**6)
@@ -281,7 +290,7 @@ def test_copy_with_threads():
     ), "Update state of copy diverged from expected state"
 
 
-def test_version():
+def test_version() -> None:
     # Just sanity check that it's a version string. Don't assert the specific
     # version, both because we don't want to bother with parsing Cargo.toml,
     # and because these tests might be reused to test C bindings.
@@ -289,7 +298,7 @@ def test_version():
     assert len(__version__.split(".")) == 3
 
 
-def test_invalid_max_threads():
+def test_invalid_max_threads() -> None:
     # Check 0.
     try:
         blake3(max_threads=0)
@@ -307,25 +316,25 @@ def test_invalid_max_threads():
         assert False, "expected a ValueError"
 
 
-def test_positional_only_arguments():
+def test_positional_only_arguments() -> None:
     try:
         # Passing the data as a keyword argument should fail.
-        blake3(data=b"")
+        blake3(data=b"")  # type: ignore
         assert False, "expected TypeError"
     except TypeError:
         pass
     try:
         # Passing the data as a keyword argument should fail.
-        blake3().update(data=b"")
+        blake3().update(data=b"")  # type: ignore
         assert False, "expected TypeError"
     except TypeError:
         pass
 
 
-def test_keyword_only_arguments():
+def test_keyword_only_arguments() -> None:
     try:
         # Passing the key as a positional argument should fail.
-        blake3(b"", b"\0" * 32)
+        blake3(b"", b"\0" * 32)  # type: ignore
         assert False, "expected TypeError"
     except TypeError:
         pass
@@ -341,34 +350,34 @@ def test_keyword_only_arguments():
     blake3(b"").hexdigest(32, seek=0)
     blake3(b"").hexdigest(length=32, seek=0)
     try:
-        blake3(b"").digest(32, 0)
+        blake3(b"").digest(32, 0)  # type: ignore
         assert False, "expected TypeError"
     except TypeError:
         pass
     try:
-        blake3(b"").hexdigest(32, 0)
+        blake3(b"").hexdigest(32, 0)  # type: ignore
         assert False, "expected TypeError"
     except TypeError:
         pass
 
 
-def test_usedforsecurity_ignored():
+def test_usedforsecurity_ignored() -> None:
     blake3(usedforsecurity=True)
     blake3(usedforsecurity=False)
 
 
-def test_context_must_be_str():
+def test_context_must_be_str() -> None:
     # string works
     blake3(derive_key_context="foo")
     try:
         # bytes fails
-        blake3(derive_key_context=b"foo")
+        blake3(derive_key_context=b"foo")  # type: ignore
         assert False, "should fail"
     except TypeError:
         pass
 
 
-def test_buffers_released():
+def test_buffers_released() -> None:
     key = bytearray(32)
     message = bytearray(32)
 
@@ -382,7 +391,7 @@ def test_buffers_released():
     message.extend(b"foo")
 
 
-def test_reset():
+def test_reset() -> None:
     hasher = blake3()
     hash1 = hasher.digest()
     hasher.update(b"foo")
@@ -397,7 +406,7 @@ def test_reset():
     assert hash2 == hash4
 
 
-def test_output_overflows_isize():
+def test_output_overflows_isize() -> None:
     try:
         blake3().digest(sys.maxsize + 1)
         assert False, "should throw"
@@ -415,7 +424,7 @@ def test_output_overflows_isize():
 # `blake3.blake3`. Both implementations should pass this test. See also:
 # https://github.com/mkdocstrings/mkdocstrings/issues/451 and
 # https://github.com/PyO3/maturin/discussions/1365
-def test_module_name():
-    global_scope = {}
+def test_module_name() -> None:
+    global_scope: dict[str, Any] = {}
     exec(f"from {blake3.__module__} import blake3 as foobar", global_scope)
     assert global_scope["foobar"] is blake3
