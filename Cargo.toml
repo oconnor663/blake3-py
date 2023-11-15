@@ -21,7 +21,7 @@ crate-type = ["cdylib"]
 neon = ["blake3/neon"]
 
 [dependencies]
-blake3 = { version = "1.0.0", features = ["rayon"] }
-hex = "0.4.2"
-pyo3 = { version = "0.19.0", features = ["extension-module"] }
-rayon = "1.2.1"
+blake3 = { version = "1.5.0", features = ["rayon"] }
+hex = "0.4.3"
+pyo3 = { version = "0.20.0", features = ["extension-module"] }
+rayon = "1.8.0"
