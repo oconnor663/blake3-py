@@ -16,7 +16,7 @@ jobs:
         #   - tag.yml
         #   - maturin_build_wheel.py
         #   - the c_impl tests below
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
         rust-toolchain: [stable, beta, nightly]
         platform: [
           # This list should be kept in sync with tag.yml.
@@ -68,7 +68,7 @@ jobs:
         #   - tag.yml
         #   - maturin_build_wheel.py
         #   - the rust_impl tests above
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         platform: [
           # This list should be kept in sync with tag.yml.
           { os: "ubuntu-latest",  python-architecture: "x64", name: "Linux x64" },
@@ -117,7 +117,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       # We use numpy to test the error case of trying to hash a strided buffer.
       - name: Install pytest, numpy, and mypy
         run: pip install pytest numpy mypy

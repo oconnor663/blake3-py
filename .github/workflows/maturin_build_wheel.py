@@ -24,6 +24,7 @@ if platform.system() == "Linux":
         (3, 9): "cp39-cp39",
         (3, 10): "cp310-cp310",
         (3, 11): "cp311-cp311",
+        (3, 12): "cp312-cp312",
         # This list needs to be kept in sync with:
         #   - push.yml (rust_impl and c_impl)
         #   - tag.yml
