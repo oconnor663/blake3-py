@@ -33,19 +33,16 @@ jobs:
     env:
       CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.platform.python-architecture }}
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
           target: ${{ matrix.platform.rust-target }}
-          default: true
-          profile: minimal
       - name: install maturin
         # Keep the Maturin version in sync with pyproject.toml.
         run: pip install "maturin>=0.14,<0.15"
@@ -71,9 +68,9 @@ jobs:
     name: sdist
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
           architecture: x64
@@ -110,6 +107,6 @@ jobs:
       - name: twine upload
         env:
           GITHUB_TAG: ${{ github.ref }}
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
         run: python -u .github/workflows/twine_upload.py

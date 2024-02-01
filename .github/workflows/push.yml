@@ -36,20 +36,18 @@ jobs:
     env:
       CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.platform.python-architecture }}
       - run: python tests/python_info.py
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust-toolchain }}
           target: ${{ matrix.platform.rust-target }}
-          default: true
-          profile: minimal
       # We use numpy to test the error case of trying to hash a strided buffer.
       - name: Install pytest and numpy
         run: pip install pytest numpy
@@ -80,9 +78,9 @@ jobs:
     env:
       CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.platform.python-architecture }}

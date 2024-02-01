@@ -41,7 +41,7 @@ for asset_name in asset_names:
 
 print("Uploading to PyPI with twine...")
 # Credentials are in the environment, TWINE_USERNAME and TWINE_PASSWORD.
-twine_cmd = ["twine", "upload", "--skip-existing"] + asset_files
+twine_cmd = ["twine", "upload", "--skip-existing", "--non-interactive"] + asset_files
 subprocess.run(twine_cmd, check=True)
 
 print("Success!")
