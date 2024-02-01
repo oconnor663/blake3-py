@@ -2,10 +2,13 @@
 #include <Python.h>
 
 #include <stdbool.h>
+#include <stdio.h>
 
 #include "blake3.h"
 
 #define AUTO -1
+
+#define BUFSIZE 65536
 
 // CPython defines HASHLIB_GIL_MINSIZE in hashlib.h. We'll want to remove this
 // definition if this code is added to CPython.
@@ -220,6 +223,69 @@ exit:
   return ret;
 }
 
+// This implementation doesn't actually use mmap; it just falls back to regular
+// file reading. This mainly exists for compatibility with the Rust
+// implementation's Python test suite.
+// TODO: actually mmap
+static PyObject *Blake3_update_mmap(Blake3Object *self, PyObject *args,
+                                    PyObject *kwds) {
+  PyBytesObject *path_bytes = NULL;
+  FILE *file = NULL;
+  PyObject *ret = NULL;
+
+  static char *kwlist[] = {
+      "path",
+      NULL,
+  };
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "O&", kwlist,
+                                   PyUnicode_FSConverter, &path_bytes)) {
+    return NULL;
+  }
+
+  PyThreadState *thread_state;
+  Blake3_release_gil_and_lock_self(self, &thread_state);
+
+  file = fopen(PyBytes_AS_STRING(path_bytes), "r");
+  if (!file) {
+    goto exit;
+  }
+
+  char *buf[BUFSIZE];
+  while (1) {
+    size_t n = fread(buf, sizeof(char), BUFSIZE, file);
+    if (ferror(file)) {
+      goto exit;
+    }
+    blake3_hasher_update(&self->hasher, buf, n);
+    if (feof(file)) {
+      break;
+    }
+  }
+
+  int fclose_ret = fclose(file);
+  file = NULL;
+  if (fclose_ret != 0) {
+    goto exit;
+  }
+
+  // success
+  Py_INCREF(Py_None);
+  ret = Py_None;
+
+exit:
+  if (file) {
+    fclose(file);
+  }
+  Blake3_unlock_self_and_acquire_gil(self, &thread_state);
+  if (!ret) {
+    // XXX: The caller must hold the GIL to call PyErr_SetFromErrno, although
+    // this is not documented.
+    PyErr_SetFromErrno(PyExc_OSError);
+  }
+  Py_XDECREF(path_bytes);
+  return ret;
+}
+
 static PyObject *Blake3_digest(Blake3Object *self, PyObject *args,
                                PyObject *kwds) {
   static char *kwlist[] = {
@@ -279,11 +345,13 @@ static PyObject *Blake3_reset(Blake3Object *self, PyObject *args) {
 
 static PyMethodDef Blake3_methods[] = {
     {"update", (PyCFunction)Blake3_update, METH_VARARGS, "add input bytes"},
-    {"digest", (PyCFunction)Blake3_digest, METH_VARARGS | METH_KEYWORDS,
-     "finalize the hash"},
-    {"hexdigest", (PyCFunction)Blake3_hexdigest, METH_VARARGS | METH_KEYWORDS,
+    {"update_mmap", (PyCFunctionWithKeywords)Blake3_update_mmap,
+     METH_VARARGS | METH_KEYWORDS, "add input bytes from a filepath"},
+    {"digest", (PyCFunctionWithKeywords)Blake3_digest,
+     METH_VARARGS | METH_KEYWORDS, "finalize the hash"},
+    {"hexdigest", (PyCFunctionWithKeywords)Blake3_hexdigest,
+     METH_VARARGS | METH_KEYWORDS,
      "finalize the hash and encode the result as hex"},
-    {"update", (PyCFunction)Blake3_update, METH_VARARGS, "add input bytes"},
     {"copy", (PyCFunction)Blake3_copy, METH_VARARGS,
      "make a copy of this hasher"},
     {"reset", (PyCFunction)Blake3_reset, METH_VARARGS,

@@ -52,7 +52,13 @@ hash_two = blake3(large_input, max_threads=2).digest()
 hash_many = blake3(large_input, max_threads=blake3.AUTO).digest()
 assert hash_single == hash_two == hash_many
 
-# Copy a hasher that has already accepted some input.
+# Hash a file with multiple threads using memory mapping. This is what b3sum
+# does by default.
+file_hasher = blake3(max_threads=blake3.AUTO)
+file_hasher.update_mmap("/big/file.txt")
+file_hash = file_hasher.digest()
+
+# Copy a hasher that's already accepted some input.
 hasher1 = blake3(b"foo")
 hasher2 = hasher1.copy()
 hasher1.update(b"bar")

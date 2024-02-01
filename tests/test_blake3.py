@@ -2,9 +2,11 @@ import array
 from binascii import unhexlify
 import json
 import numpy
+import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 from typing import Any
 
 from blake3 import blake3, __version__
@@ -428,3 +430,36 @@ def test_module_name() -> None:
     global_scope: dict[str, Any] = {}
     exec(f"from {blake3.__module__} import blake3 as foobar", global_scope)
     assert global_scope["foobar"] is blake3
+
+
+def test_mmap() -> None:
+    input_bytes = bytes([42]) * 1_000_000
+    # Note that we can't use NamedTemporaryFile here, because we can't open it
+    # again on Windows.
+    (fd, temp_path) = tempfile.mkstemp()
+    os.close(fd)
+    with open(temp_path, "wb") as f:
+        f.write(input_bytes)
+
+    # Test all three threading modes, and both str and Path arguments. Note
+    # that PyO3 doesn't support converting Python bytes to a Rust PathBuf,
+    # I think because that's not generally possible on Windows.
+    hasher1 = blake3()
+    hasher1.update_mmap(temp_path)
+    assert blake3(input_bytes).digest() == hasher1.digest()
+
+    hasher2 = blake3(max_threads=blake3.AUTO)
+    hasher2.update_mmap(Path(temp_path))
+    assert blake3(input_bytes).digest() == hasher2.digest()
+
+    hasher3 = blake3(max_threads=4)
+    hasher3.update_mmap(temp_path)
+    hasher3.update_mmap(path=Path(temp_path))
+    assert blake3(2 * input_bytes).digest() == hasher3.digest()
+
+    # Test a nonexistent file.
+    try:
+        hasher3.update_mmap("/non/existent/file.txt")
+        assert False, "expected a file not found error"
+    except FileNotFoundError:
+        pass

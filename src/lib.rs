@@ -4,6 +4,7 @@ use pyo3::buffer::PyBuffer;
 use pyo3::exceptions::{PyBufferError, PyOverflowError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyString};
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 // This is the same as HASHLIB_GIL_MINSIZE in CPython.
@@ -324,6 +325,33 @@ impl Blake3Class {
             update_closure();
         }
 
+        Ok(())
+    }
+
+    /// Read a file using memory mapping and add its bytes to the hasher. You can call this any
+    /// number of times.
+    ///
+    /// Arguments:
+    /// - `path` (required): The filepath to read.
+    #[pyo3(signature=(path))]
+    fn update_mmap(&mut self, py: Python, path: PathBuf) -> PyResult<()> {
+        py.allow_threads(|| -> PyResult<()> {
+            match &mut self.threading_mode {
+                ThreadingMode::Single => {
+                    self.rust_hasher.lock().unwrap().update_mmap(&path)?;
+                }
+                ThreadingMode::Auto => {
+                    self.rust_hasher.lock().unwrap().update_mmap_rayon(&path)?;
+                }
+                ThreadingMode::Pool { pool, .. } => {
+                    pool.install(|| -> PyResult<()> {
+                        self.rust_hasher.lock().unwrap().update_mmap_rayon(&path)?;
+                        Ok(())
+                    })?;
+                }
+            }
+            Ok(())
+        })?;
         Ok(())
     }
 
