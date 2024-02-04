@@ -452,10 +452,14 @@ def test_mmap() -> None:
     hasher2.update_mmap(Path(temp_path))
     assert blake3(input_bytes).digest() == hasher2.digest()
 
-    hasher3 = blake3(max_threads=4)
-    hasher3.update_mmap(temp_path)
-    hasher3.update_mmap(path=Path(temp_path))
-    assert blake3(2 * input_bytes).digest() == hasher3.digest()
+    # Also test that update and update_mmap return self.
+    hasher3 = (
+        blake3(max_threads=4)
+        .update(input_bytes)
+        .update_mmap(temp_path)
+        .update_mmap(path=Path(temp_path))
+    )
+    assert blake3(3 * input_bytes).digest() == hasher3.digest()
 
     # Test a nonexistent file.
     try:

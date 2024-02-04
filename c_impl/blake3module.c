@@ -215,8 +215,7 @@ static PyObject *Blake3_update(Blake3Object *self, PyObject *args) {
   }
 
   // success
-  Py_INCREF(Py_None);
-  ret = Py_None;
+  ret = self;
 
 exit:
   release_buf_if_acquired(&data);
@@ -268,9 +267,7 @@ static PyObject *Blake3_update_mmap(Blake3Object *self, PyObject *args,
     goto exit;
   }
 
-  // success
-  Py_INCREF(Py_None);
-  ret = Py_None;
+  ret = self;
 
 exit:
   if (file) {

@@ -23,6 +23,9 @@ hasher.update(b"baz")
 hash2 = hasher.digest()
 assert hash1 == hash2
 
+# Hash the same input fluently.
+assert hash1 == blake3(b"foo").update(b"bar").update(b"baz").digest()
+
 # Hexadecimal output.
 print("The hash of 'hello world' is", blake3(b"hello world").hexdigest())
 

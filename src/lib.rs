@@ -297,21 +297,26 @@ impl Blake3Class {
     /// Arguments:
     /// - `data` (required): The input bytes.
     #[pyo3(signature=(data, /))]
-    fn update(&mut self, py: Python, data: &PyAny) -> PyResult<()> {
+    fn update<'this>(
+        mut this: PyRefMut<'this, Self>,
+        py: Python,
+        data: &PyAny,
+    ) -> PyResult<PyRefMut<'this, Self>> {
         // Get a slice that's not tied to the `py` lifetime.
         // XXX: The safety situation here is a bit complicated. See all the
         //      comments in unsafe_slice_from_buffer.
         let slice: &[u8] = unsafe { unsafe_slice_from_buffer(py, data)? };
 
-        let mut update_closure = || match &mut self.threading_mode {
+        let this_mut = &mut *this;
+        let mut update_closure = || match &mut this_mut.threading_mode {
             ThreadingMode::Single => {
-                self.rust_hasher.lock().unwrap().update(slice);
+                this_mut.rust_hasher.lock().unwrap().update(slice);
             }
             ThreadingMode::Auto => {
-                self.rust_hasher.lock().unwrap().update_rayon(slice);
+                this_mut.rust_hasher.lock().unwrap().update_rayon(slice);
             }
             ThreadingMode::Pool { pool, .. } => pool.install(|| {
-                self.rust_hasher.lock().unwrap().update_rayon(slice);
+                this_mut.rust_hasher.lock().unwrap().update_rayon(slice);
             }),
         };
 
@@ -325,7 +330,7 @@ impl Blake3Class {
             update_closure();
         }
 
-        Ok(())
+        Ok(this)
     }
 
     /// Read a file using memory mapping and add its bytes to the hasher. You can call this any
@@ -334,25 +339,38 @@ impl Blake3Class {
     /// Arguments:
     /// - `path` (required): The filepath to read.
     #[pyo3(signature=(path))]
-    fn update_mmap(&mut self, py: Python, path: PathBuf) -> PyResult<()> {
+    fn update_mmap<'this>(
+        mut this: PyRefMut<'this, Self>,
+        py: Python,
+        path: PathBuf,
+    ) -> PyResult<PyRefMut<'this, Self>> {
+        let this_mut = &mut *this;
         py.allow_threads(|| -> PyResult<()> {
-            match &mut self.threading_mode {
+            match &mut this_mut.threading_mode {
                 ThreadingMode::Single => {
-                    self.rust_hasher.lock().unwrap().update_mmap(&path)?;
+                    this_mut.rust_hasher.lock().unwrap().update_mmap(&path)?;
                 }
                 ThreadingMode::Auto => {
-                    self.rust_hasher.lock().unwrap().update_mmap_rayon(&path)?;
+                    this_mut
+                        .rust_hasher
+                        .lock()
+                        .unwrap()
+                        .update_mmap_rayon(&path)?;
                 }
                 ThreadingMode::Pool { pool, .. } => {
                     pool.install(|| -> PyResult<()> {
-                        self.rust_hasher.lock().unwrap().update_mmap_rayon(&path)?;
+                        this_mut
+                            .rust_hasher
+                            .lock()
+                            .unwrap()
+                            .update_mmap_rayon(&path)?;
                         Ok(())
                     })?;
                 }
             }
             Ok(())
         })?;
-        Ok(())
+        Ok(this)
     }
 
     /// Return a copy (“clone”) of the hasher. This can be used to
