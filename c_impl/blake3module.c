@@ -214,7 +214,9 @@ static PyObject *Blake3_update(Blake3Object *self, PyObject *args) {
     Blake3_unlock_self(self);
   }
 
-  // success
+  // Success. We need to increment the refcount on self to return it, see:
+  // https://docs.python.org/3/extending/extending.html#ownership-rules.
+  Py_INCREF(self);
   ret = self;
 
 exit:
@@ -267,6 +269,9 @@ static PyObject *Blake3_update_mmap(Blake3Object *self, PyObject *args,
     goto exit;
   }
 
+  // Success. We need to increment the refcount on self to return it, see:
+  // https://docs.python.org/3/extending/extending.html#ownership-rules.
+  Py_INCREF(self);
   ret = self;
 
 exit:
