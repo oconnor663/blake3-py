@@ -1,112 +1,111 @@
-name: packaging
+name: dists
 
 on:
+  pull_request:
   push:
-    tags:
-      - "*"
+    branches: master
+  release:
+    types: [released, prereleased]
+  workflow_dispatch:  # allows running workflow manually from the Actions tab
 
 jobs:
   wheel:
-    name: Python ${{ matrix.python-version }}, ${{ matrix.platform.name }}
-    runs-on: ${{ matrix.platform.os }}
+    name: ${{ matrix.os }}-${{ matrix.target }}-${{ matrix.interpreter }}-${{ matrix.manylinux }}
     strategy:
-      matrix:
-        # This list needs to be kept in sync with:
-        #   - push.yml (rust_impl and c_impl)
-        #   - maturin_build_wheel.py
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
-        platform: [
-          # This list should be kept in sync with push.yml.
-          { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu", name: "Linux x64" },
-          { os: "macOS-13",       python-architecture: "x64", rust-target: "x86_64-apple-darwin",      name: "macOS x64" },
-          { os: "macOS-11",       python-architecture: "x64", rust-target: "aarch64-apple-darwin",     name: "macOS ARM" },
-          { os: "windows-latest", python-architecture: "x64", rust-target: "x86_64-pc-windows-msvc",   name: "Windows x86" },
-          { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc",     name: "Windows x64" },
-        ]
-        exclude:
-          # aarch64 macOS has no support for Python version lower than 3.8
-          - python-version: 3.7
-            platform:
-              os: "macOS-11"
-              rust-target: "aarch64-apple-darwin"
       fail-fast: false
-    env:
-      CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.platform.python-architecture }}
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          target: ${{ matrix.platform.rust-target }}
-      - name: install maturin
-        # Keep the Maturin version in sync with pyproject.toml.
-        run: pip install "maturin>=0.14,<0.15"
-        # On Linux we'll run Maturin in a Docker container.
-        if: matrix.platform.os != 'ubuntu-latest'
-      - name: build wheel
-        id: build_wheel
-        run: python -u .github/workflows/maturin_build_wheel.py
-      - name: install PyGithub
-        run: pip install PyGithub
-      - name: upload release asset
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_TAG: ${{ github.ref }}
-        run: python -u .github/workflows/upload_github_release_asset.py ${{ steps.build_wheel.outputs.wheel_path }}
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        target: [x86_64, aarch64]
+        manylinux: [auto]
+        interpreter: [all]
+        include:
+        - os: ubuntu-latest
+          target: i686
+        - os: ubuntu-latest
+          target: aarch64
+        - os: ubuntu-latest
+          target: armv7
+        - os: ubuntu-latest
+          target: ppc64le
+        - os: ubuntu-latest
+          target: s390x
+        - os: ubuntu-latest
+          manylinux: musllinux_1_1
+          target: x86_64
+        - os: ubuntu-latest
+          manylinux: musllinux_1_1
+          target: aarch64
+        exclude:
+        # FIXME aarch64 builds broken, see https://github.com/PyO3/maturin/issues/2110
+        - os: windows-latest
+          target: aarch64
 
-  # The sdist could be built automatically by each of the wheel jobs above (if
-  # we didn't set the --no-sdist flag), but we give it its own job here to
-  # avoid having different platforms race to upload it. The platform shouldn't
-  # matter for generating the sdist, but in case it ever does, it would be
-  # better to be consistent.
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: 3.x
+
+    - name: build wheels
+      uses: PyO3/maturin-action@v1
+      with:
+        target: ${{ matrix.target }}
+        manylinux: ${{ matrix.manylinux }}
+        args: --release --out dist --interpreter ${{ matrix.interpreter == 'all' && '3.8 3.9 3.10 3.11 3.12 3.13' || matrix.interpreter }}
+        rust-toolchain: stable
+        docker-options: -e CI
+
+    - run: ${{ (matrix.os == 'windows' && 'dir') || 'ls -lh' }} dist/
+
+    - run: pip install twine && twine check --strict dist/*
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.interpreter }}-${{ matrix.manylinux }}
+        path: dist
+
   sdist:
-    name: sdist
+    name: build sdist
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.8
-          architecture: x64
-      - name: install maturin
-        run: pip install maturin
-      - name: build sdist
-        id: build_sdist
-        run: python -u .github/workflows/maturin_build_sdist.py
-      - name: install PyGithub
-        run: pip install PyGithub
-      - name: upload release asset
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_TAG: ${{ github.ref }}
-        run: python -u .github/workflows/upload_github_release_asset.py ${{ steps.build_sdist.outputs.sdist_path }}
+    - uses: actions/checkout@v4
 
-  pypi:
-    name: pypi
-    needs:
-      - wheel
-      - sdist
+    - uses: PyO3/maturin-action@v1
+      with:
+        command: sdist
+        args: --out dist
+        rust-toolchain: stable
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dist-sdist
+        path: dist
+
+  publish:
+    if: github.event_name == 'release'
+    needs: [wheel, sdist]
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # softprops/action-gh-release
+      id-token: write  # pypa/gh-action-pypi-publish
+
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.8
-          architecture: x64
-      - name: install PyGithub
-        run: pip install PyGithub
-      - name: install twine
-        run: pip install twine
-      - name: twine upload
-        env:
-          GITHUB_TAG: ${{ github.ref }}
-          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
-        run: python -u .github/workflows/twine_upload.py
+    - uses: actions/download-artifact@v4
+      with:
+        path: dist/
+        pattern: dist-*
+        merge-multiple: true
+
+    - run: ls -ltra dist/
+
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v2.0.8
+      with:
+        files: dist/*
+
+    # trusted publisher in https://pypi.org/manage/project/blake3/settings/publishing/
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@v1.10.2
