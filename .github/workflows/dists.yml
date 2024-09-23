@@ -24,7 +24,7 @@ jobs:
         interpreter: [all]
         python-architecture: [x64]
         include:
-        - os: windows
+        - os: windows-latest
           target: i686
           manylinux: auto
           interpreter: all
