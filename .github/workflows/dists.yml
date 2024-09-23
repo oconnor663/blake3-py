@@ -64,6 +64,10 @@ jobs:
           manylinux: musllinux_1_1
           interpreter: all
           python-architecture: x64
+        exclude:
+        # FIXME aarch64 builds broken, see https://github.com/PyO3/maturin/issues/2110
+        - os: windows-latest
+          target: aarch64
 
     runs-on: ${{ matrix.os }}
     steps:
