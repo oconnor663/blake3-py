@@ -57,7 +57,8 @@ jobs:
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
-        args: --release --out dist --interpreter ${{ matrix.interpreter == 'all' && '3.8 3.9 3.10 3.11 3.12 3.13' || matrix.interpreter }}
+        # Keep in sync with tests.yml
+        args: --release --out dist --interpreter ${{ matrix.interpreter == 'all' && '3.8 3.9 3.10 3.11 3.12' || matrix.interpreter }}
         rust-toolchain: stable
         docker-options: -e CI
 
