@@ -2,9 +2,12 @@ name: tests
 
 on:
   push:
-    branches:
-      - "*"
+    branches: master
   pull_request:
+
+concurrency:  # https://stackoverflow.com/questions/66335225#comment133398800_72408109
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   rust_impl:
