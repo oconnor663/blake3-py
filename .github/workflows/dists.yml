@@ -8,6 +8,10 @@ on:
     types: [released, prereleased]
   workflow_dispatch:  # allows running workflow manually from the Actions tab
 
+concurrency:  # https://stackoverflow.com/questions/66335225#comment133398800_72408109
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   wheel:
     name: ${{ matrix.os }}-${{ matrix.target }}-${{ matrix.interpreter }}-${{ matrix.manylinux }}
