@@ -74,7 +74,7 @@ jobs:
         rust-toolchain: stable
         docker-options: -e CI
 
-    - run: ${{ (matrix.os == 'windows' && 'dir') || 'ls -lh' }} dist/
+    - run: ${{ (matrix.os == 'windows-latest' && 'dir') || 'ls -ltra' }} dist/
 
     - run: pip install twine && twine check --strict dist/*
 
