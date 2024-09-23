@@ -50,8 +50,7 @@ jobs:
       with:
         python-version: 3.x
 
-    - name: build wheels
-      uses: PyO3/maturin-action@v1
+    - uses: PyO3/maturin-action@v1
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux || 'auto' }}
@@ -70,7 +69,7 @@ jobs:
         path: dist
 
   sdist:
-    name: build sdist
+    name: sdist
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -112,3 +111,5 @@ jobs:
     # trusted publisher in https://pypi.org/manage/project/blake3/settings/publishing/
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@v1.10.2
+      with:
+        skip-existing: true
