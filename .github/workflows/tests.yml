@@ -11,7 +11,7 @@ concurrency:  # https://stackoverflow.com/questions/66335225#comment133398800_72
 
 jobs:
   rust_impl:
-    name: "Rust impl: ${{ matrix.python-version }}, ${{ matrix.rust-toolchain }}, ${{ matrix.platform.name }}"
+    name: rust-impl-${{ matrix.python-version }}-${{ matrix.rust-toolchain }}-${{ matrix.platform.name }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
@@ -21,19 +21,12 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         rust-toolchain: [stable, beta, nightly]
         platform: [
-          { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu", name: "Linux x64" },
-          # macOS-latest is currently broken by https://github.com/actions/setup-python/issues/855
-          { os: "macOS-13",       python-architecture: "x64", rust-target: "x86_64-apple-darwin",      name: "macOS x64" },
-          { os: "macOS-11",       python-architecture: "x64", rust-target: "aarch64-apple-darwin",     name: "macOS ARM" },
-          { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc",     name: "Windows x86" },
-          { os: "windows-latest", python-architecture: "x64", rust-target: "x86_64-pc-windows-msvc",   name: "Windows x64" },
+          { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu", name: "ubuntu-x64" },
+          { os: "macos-13",       python-architecture: "x64", rust-target: "x86_64-apple-darwin",      name: "macos-x64" },
+          { os: "macos-14",       python-architecture: "x64", rust-target: "aarch64-apple-darwin",     name: "macos-arm64" },
+          { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc",     name: "windows-x86" },
+          { os: "windows-latest", python-architecture: "x64", rust-target: "x86_64-pc-windows-msvc",   name: "windows-x64" },
         ]
-        exclude:
-          # aarch64 macOS has no support for Python version lower than 3.8
-          - python-version: 3.7
-            platform:
-              os: "macOS-11"
-              rust-target: "aarch64-apple-darwin"
       fail-fast: false
     env:
       CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
@@ -60,7 +53,7 @@ jobs:
         run: python -u -m pytest --verbose
 
   c_impl:
-    name: "C impl: ${{ matrix.python-version }}, ${{ matrix.platform.name }}"
+    name: c-impl-${{ matrix.python-version }}-${{ matrix.platform.name }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
@@ -70,15 +63,13 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         platform: [
           # This list should be kept in sync with dists.yml.
-          { os: "ubuntu-latest",  python-architecture: "x64", name: "Linux x64" },
-          # macOS-latest is currently broken by https://github.com/actions/setup-python/issues/855
-          { os: "macOS-13",       python-architecture: "x64", name: "macOS x64" },
-          { os: "windows-latest", python-architecture: "x86", name: "Windows x86" },
-          { os: "windows-latest", python-architecture: "x64", name: "Windows x64" },
+          { os: "ubuntu-latest",  python-architecture: "x64", name: "ubuntu-x64" },
+          { os: "macos-13",       python-architecture: "x64", name: "macos-x64" },
+          { os: "macos-14",       python-architecture: "x64", name: "macos-arm64" },
+          { os: "windows-latest", python-architecture: "x86", name: "windows-x86" },
+          { os: "windows-latest", python-architecture: "x64", name: "windows-x64" },
         ]
       fail-fast: false
-    env:
-      CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
