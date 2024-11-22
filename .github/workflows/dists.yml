@@ -1,0 +1,105 @@
+name: dists
+
+on:
+  pull_request:
+  push:
+    branches: master
+  release:
+    types: [released, prereleased]
+  workflow_dispatch:  # allows running workflow manually from the Actions tab
+
+concurrency:  # https://stackoverflow.com/questions/66335225#comment133398800_72408109
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  wheel:
+    name: ${{ matrix.os }}-${{ matrix.target }}-${{ matrix.manylinux || 'auto' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - { os: macos-latest,   target: x86_64 }
+        - { os: macos-latest,   target: aarch64 }
+        - { os: ubuntu-latest,  target: x86_64 }
+        - { os: ubuntu-latest,  target: aarch64 }
+        - { os: ubuntu-latest,  target: i686 }
+        - { os: ubuntu-latest,  target: armv7 }
+        - { os: ubuntu-latest,  target: ppc64le }
+        - { os: ubuntu-latest,  target: s390x }
+        - { os: ubuntu-latest,  target: x86_64,  manylinux: musllinux_1_1 }
+        - { os: ubuntu-latest,  target: aarch64, manylinux: musllinux_1_1 }
+        - { os: windows-latest, target: x86_64 }
+        - { os: windows-latest, target: i686 }
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: 3.x
+
+    - uses: PyO3/maturin-action@v1
+      with:
+        target: ${{ matrix.target }}
+        manylinux: ${{ matrix.manylinux || 'auto' }}
+        # Keep in sync with tests.yml
+        args: --release --out dist --interpreter '3.8 3.9 3.10 3.11 3.12'
+        rust-toolchain: stable
+        docker-options: -e CI
+
+    - run: ${{ (matrix.os == 'windows-latest' && 'dir') || 'ls -ltra' }} dist/
+
+    - run: pip install twine && twine check --strict dist/*
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.manylinux || 'auto' }}
+        path: dist
+
+  sdist:
+    name: sdist
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: PyO3/maturin-action@v1
+      with:
+        command: sdist
+        args: --out dist
+        rust-toolchain: stable
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dist-sdist
+        path: dist
+
+  publish:
+    if: github.event_name == 'release'
+    needs: [wheel, sdist]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # softprops/action-gh-release
+      id-token: write  # pypa/gh-action-pypi-publish
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        path: dist/
+        pattern: dist-*
+        merge-multiple: true
+
+    - run: ls -ltra dist/
+
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v2.0.8
+      with:
+        files: dist/*
+
+    # trusted publisher in https://pypi.org/manage/project/blake3/settings/publishing/
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@v1.10.2
+      with:
+        skip-existing: true
