@@ -37,7 +37,12 @@ jobs:
 
     - uses: actions/setup-python@v5
       with:
+        # TODO: This is a temporary workaround until GitHub Windows images include Python 3.13 by default. See:
+        # https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md#python.
+        # Future updates of this file can probably revert to "3.x". (Or maybe the same workaround will be needed
+        # for 3.14? Who knows.)
         python-version: "3.13"
+        architecture: ${{ matrix.target == 'i686' && 'x86' || null }}
 
     - uses: PyO3/maturin-action@v1
       with:
