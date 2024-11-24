@@ -3,7 +3,6 @@ name: dists
 on:
   pull_request:
   push:
-    branches: master
   release:
     types: [released, prereleased]
   workflow_dispatch:  # allows running workflow manually from the Actions tab
