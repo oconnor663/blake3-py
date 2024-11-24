@@ -37,6 +37,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - uses: actions/setup-python@v5
+      if: ${{ matrix.os == 'windows-latest' }}
       with:
         # TODO: This is a temporary workaround until GitHub Windows images include Python 3.13 by default. See:
         # https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md#python.
