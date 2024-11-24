@@ -52,7 +52,7 @@ jobs:
         manylinux: ${{ matrix.manylinux || 'auto' }}
         # Keep in sync with tests.yml
         # Python added Windows ARM64 support in 3.11.
-        args: --release --out dist --interpreter '${{ (matrix.os != 'windows-latest' || matrix.target != 'aarch64') && '3.8 3.9 3.10 ' || '' }}3.11 3.12 3.13'
+        args: --release --out dist --interpreter '${{ (matrix.os != 'windows-latest' || matrix.target != 'aarch64') && '3.8 3.9 3.10 3.11 ' || '' }}3.12 3.13'
         rust-toolchain: stable
         docker-options: -e CI
 
