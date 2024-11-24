@@ -10,13 +10,13 @@ use std::sync::Mutex;
 // This is the same as HASHLIB_GIL_MINSIZE in CPython.
 const GIL_MINSIZE: usize = 2048;
 
-unsafe fn unsafe_slice_from_buffer<'a>(py: Python, data: &'a PyAny) -> PyResult<&'a [u8]> {
+unsafe fn unsafe_slice_from_buffer<'a>(data: &'a Bound<PyAny>) -> PyResult<&'a [u8]> {
     // First see if we can get a u8 slice. This is the common case.
-    match unsafe_slice_from_typed_buffer::<u8>(py, data) {
+    match unsafe_slice_from_typed_buffer::<u8>(data) {
         // If that worked, return it.
         Ok(slice) => Ok(slice),
         // If not, then see if we can get an i8 buffer.
-        Err(u8_err) => match unsafe_slice_from_typed_buffer::<i8>(py, data) {
+        Err(u8_err) => match unsafe_slice_from_typed_buffer::<i8>(data) {
             // That worked, and we've pointer-cast it to &[u8].
             Ok(slice) => Ok(slice),
             // That didn't work either. Return the first error from above,
@@ -28,8 +28,7 @@ unsafe fn unsafe_slice_from_buffer<'a>(py: Python, data: &'a PyAny) -> PyResult<
 }
 
 unsafe fn unsafe_slice_from_typed_buffer<'a, T: pyo3::buffer::Element>(
-    py: Python,
-    data: &'a PyAny,
+    data: &'a Bound<PyAny>,
 ) -> PyResult<&'a [u8]> {
     // Assert that we only ever try this for u8 and i8.
     assert_eq!(std::mem::size_of::<T>(), std::mem::size_of::<u8>());
@@ -40,7 +39,7 @@ unsafe fn unsafe_slice_from_typed_buffer<'a, T: pyo3::buffer::Element>(
     // Get a slice from the buffer. This fails if the buffer is not contiguous,
     // Regular bytes types are almost always contiguous, but things like NumPy
     // arrays can be "strided", and those will fail here.
-    if let Some(readonly_slice) = pybuffer.as_slice(py) {
+    if let Some(readonly_slice) = pybuffer.as_slice(data.py()) {
         // We got a slice. For safety, PyO3 gives it to us as
         // &[ReadOnlyCell<T>], which is pretty much the same as a &[Cell<T>].
         // We're going to use unsafe code to cast that into a &[u8], which is
@@ -209,8 +208,8 @@ impl Blake3Class {
     ))]
     fn new(
         py: Python,
-        data: Option<&PyAny>,
-        key: Option<&PyAny>,
+        data: Option<&Bound<PyAny>>,
+        key: Option<&Bound<PyAny>>,
         derive_key_context: Option<&str>,
         max_threads: isize,
         usedforsecurity: bool,
@@ -228,7 +227,7 @@ impl Blake3Class {
                 // the same way to support bytes/bytearray/memoryview etc. Even
                 // though we just copy the bytes immediately, technically this
                 // is the same race condition.
-                let key_slice: &[u8] = unsafe { unsafe_slice_from_buffer(py, key_buf)? };
+                let key_slice: &[u8] = unsafe { unsafe_slice_from_buffer(key_buf)? };
                 let key_array: &[u8; 32] = if let Ok(array) = key_slice.try_into() {
                     array
                 } else {
@@ -261,7 +260,7 @@ impl Blake3Class {
             // Get a slice that's not tied to the `py` lifetime.
             // XXX: The safety situation here is a bit complicated. See all the
             //      comments in unsafe_slice_from_buffer.
-            let slice: &[u8] = unsafe { unsafe_slice_from_buffer(py, data)? };
+            let slice: &[u8] = unsafe { unsafe_slice_from_buffer(data)? };
 
             // Since rust_hasher isn't yet shared, we don't need to access it
             // through the Mutex here like we do in update() below.
@@ -303,12 +302,12 @@ impl Blake3Class {
     fn update<'this>(
         mut this: PyRefMut<'this, Self>,
         py: Python,
-        data: &PyAny,
+        data: &Bound<PyAny>,
     ) -> PyResult<PyRefMut<'this, Self>> {
         // Get a slice that's not tied to the `py` lifetime.
         // XXX: The safety situation here is a bit complicated. See all the
         //      comments in unsafe_slice_from_buffer.
-        let slice: &[u8] = unsafe { unsafe_slice_from_buffer(py, data)? };
+        let slice: &[u8] = unsafe { unsafe_slice_from_buffer(data)? };
 
         let this_mut = &mut *this;
         let mut update_closure = || match &mut this_mut.threading_mode {
@@ -408,7 +407,7 @@ impl Blake3Class {
     /// - `seek`: The starting byte position in the output stream. Defaults
     ///   to 0.
     #[pyo3(signature=(length=32, *, seek=0))]
-    fn digest<'p>(&self, py: Python<'p>, length: usize, seek: u64) -> PyResult<&'p PyBytes> {
+    fn digest<'p>(&self, py: Python<'p>, length: usize, seek: u64) -> PyResult<Bound<'p, PyBytes>> {
         if length > isize::max_value() as usize {
             return Err(PyOverflowError::new_err("length overflows isize"));
         }
@@ -439,7 +438,12 @@ impl Blake3Class {
     /// - `seek`: The starting byte position in the output stream, prior to
     ///   hex encoding. Defaults to 0.
     #[pyo3(signature=(length=32, *, seek=0))]
-    fn hexdigest<'p>(&self, py: Python<'p>, length: usize, seek: u64) -> PyResult<&'p PyString> {
+    fn hexdigest<'p>(
+        &self,
+        py: Python<'p>,
+        length: usize,
+        seek: u64,
+    ) -> PyResult<Bound<'p, PyString>> {
         if length > (isize::max_value() / 2) as usize {
             return Err(PyOverflowError::new_err("length overflows isize"));
         }
@@ -454,7 +458,7 @@ impl Blake3Class {
 /// class, also called `blake3.` The interface is similar to `hashlib` from
 /// the standard library, which provides `blake2b`, `md5`, etc.
 #[pymodule]
-fn blake3(_: Python, m: &PyModule) -> PyResult<()> {
+fn blake3(_: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<Blake3Class>()?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
