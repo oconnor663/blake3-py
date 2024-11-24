@@ -190,7 +190,10 @@ impl Blake3Class {
     #[allow(non_upper_case_globals)]
     const key_size: usize = 32;
 
-    /// TODO
+    /// Used as a `max_threads` value, to let the implementation choose the number of threads.
+    ///
+    /// This currently uses a number of threads equal to the number of logical cores, but that
+    /// behavior could change in the future.
     #[classattr]
     const AUTO: isize = -1;
 

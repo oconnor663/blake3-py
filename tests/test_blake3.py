@@ -87,12 +87,10 @@ def test_buffer_types() -> None:
     assert expected == blake3(bytearray(b"foo")).digest()
     assert expected == blake3(memoryview(bytearray(b"foo"))).digest()
     # "B" means unsigned char. See https://docs.python.org/3/library/array.html.
-    # TODO: un-ignore this line when PEP 688 lands in Python 3.12
-    assert expected == blake3(array.array("B", b"foo")).digest()  # type: ignore
+    assert expected == blake3(array.array("B", b"foo")).digest()
     assert expected == blake3(memoryview(array.array("B", b"foo"))).digest()
     # "b" means (signed) char.
-    # TODO: un-ignore this line when PEP 688 lands in Python 3.12
-    assert expected == blake3(array.array("b", b"foo")).digest()  # type: ignore
+    assert expected == blake3(array.array("b", b"foo")).digest()
     assert expected == blake3(memoryview(array.array("b", b"foo"))).digest()
 
     incremental = blake3()
@@ -100,11 +98,9 @@ def test_buffer_types() -> None:
     incremental.update(memoryview(b"two"))
     incremental.update(bytearray(b"three"))
     incremental.update(memoryview(bytearray(b"four")))
-    # TODO: un-ignore this line when PEP 688 lands in Python 3.12
-    incremental.update(array.array("B", b"five"))  # type: ignore
+    incremental.update(array.array("B", b"five"))
     incremental.update(memoryview(array.array("B", b"six")))
-    # TODO: un-ignore this line when PEP 688 lands in Python 3.12
-    incremental.update(array.array("b", b"seven"))  # type: ignore
+    incremental.update(array.array("b", b"seven"))
     incremental.update(memoryview(array.array("b", b"eight")))
     assert incremental.digest() == blake3(b"onetwothreefourfivesixseveneight").digest()
 
@@ -135,8 +131,7 @@ def test_invalid_key_lengths() -> None:
 def test_int_array_fails() -> None:
     try:
         # "i" represents the int type, which is larger than a char.
-        # TODO: un-ignore this line when PEP 688 lands in Python 3.12
-        blake3(array.array("i"))  # type: ignore
+        blake3(array.array("i"))
     # We get BufferError in Rust and ValueError in C.
     except (BufferError, ValueError):
         pass
@@ -145,8 +140,7 @@ def test_int_array_fails() -> None:
 
     # The same thing, but with the update method.
     try:
-        # TODO: un-ignore this line when PEP 688 lands in Python 3.12
-        blake3().update(array.array("i"))  # type: ignore
+        blake3().update(array.array("i"))
     except (BufferError, ValueError):
         pass
     else:
@@ -158,12 +152,10 @@ def test_strided_array_fails() -> None:
     strided = numpy.lib.stride_tricks.as_strided(unstrided, shape=[2], strides=[2])
     assert bytes(strided) == bytes([1, 3])
     # Unstrided works fine.
-    # TODO: un-ignore this line when PEP 688 lands in Python 3.12
-    blake3(unstrided)  # type: ignore
+    blake3(unstrided)
     try:
         # But strided fails.
-        # TODO: un-ignore this line when PEP 688 lands in Python 3.12
-        blake3(strided)  # type: ignore
+        blake3(strided)
     # We get BufferError in Rust and ValueError in C.
     except (BufferError, ValueError):
         pass

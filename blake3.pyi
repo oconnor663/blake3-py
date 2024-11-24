@@ -1,4 +1,5 @@
 from os import PathLike
+from collections.abc import Buffer
 
 __version__: str = ...
 
@@ -10,17 +11,15 @@ class blake3:
     AUTO: int
     def __init__(
         self,
-        # TODO: use collections.abc.Buffer here when PEP 688 lands in Python 3.12
-        data: bytes = ...,
+        data: Buffer = ...,
         /,
         *,
-        key: bytes = ...,
+        key: Buffer = ...,
         derive_key_context: str = ...,
         max_threads: int = ...,
         usedforsecurity: bool = ...,
     ): ...
-    # TODO: use collections.abc.Buffer here when PEP 688 lands in Python 3.12
-    def update(self, data: bytes, /) -> blake3: ...
+    def update(self, data: Buffer, /) -> blake3: ...
     def update_mmap(self, path: str | PathLike[str]) -> blake3: ...
     def copy(self) -> blake3: ...
     def reset(self) -> None: ...
