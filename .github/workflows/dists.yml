@@ -37,8 +37,9 @@ jobs:
 
     - uses: actions/setup-python@v5
       with:
-        python-version: "3.x"
-        # 32bit python needs to be available for the win32 wheel
+        # pin to the latest supported python version
+        python-version: "3.13"
+        # x86 python needs to be available for the win32 wheel
         architecture: ${{ ( matrix.os == 'windows-latest' && matrix.target == 'i686' ) && 'x86' || null }}
 
     - uses: PyO3/maturin-action@v1
