@@ -22,6 +22,7 @@ jobs:
         - { os: macos-latest,   target: aarch64 }
         - { os: ubuntu-latest,  target: x86_64 }
         - { os: ubuntu-latest,  target: aarch64 }
+        - { os: ubuntu-latest,  target: i686 }
         - { os: ubuntu-latest,  target: armv7 }
         - { os: ubuntu-latest,  target: ppc64le }
         - { os: ubuntu-latest,  target: s390x }
@@ -36,12 +37,9 @@ jobs:
 
     - uses: actions/setup-python@v5
       with:
-        # TODO: This is a temporary workaround until GitHub Windows images include Python 3.13 by default. See:
-        # https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md#python.
-        # Future updates of this file can probably revert to "3.x". (Or maybe the same workaround will be needed
-        # for 3.14? Who knows.)
-        python-version: "3.13"
-        architecture: ${{ matrix.target == 'i686' && 'x86' || null }}
+        python-version: "3.x"
+        # 32bit python needs to be available for the win32 wheel
+        architecture: ${{ ( matrix.os == 'windows-latest' && matrix.target == 'i686' ) && 'x86' || null }}
 
     - uses: PyO3/maturin-action@v1
       with:
