@@ -1,3 +1,6 @@
 [build-system]
-requires = ["maturin>=1.0,<2"]
+# TODO: Remove this pin once
+# https://github.com/PyO3/maturin/pull/2332#issuecomment-2507336466
+# is resolved, one way or the other.
+requires = ["maturin==1.7.5"]
 build-backend = "maturin"
