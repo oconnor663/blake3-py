@@ -3,6 +3,7 @@ name: dists
 on:
   pull_request:
   push:
+    branches: '**'  # not tags
   release:
     types: [released, prereleased]
   workflow_dispatch:  # allows running workflow manually from the Actions tab
