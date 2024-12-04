@@ -35,7 +35,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      - PYO3_PRINT_CONFIG: 1
+      PYO3_PRINT_CONFIG: 1
 
     steps:
     - uses: actions/checkout@v4
