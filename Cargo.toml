@@ -23,5 +23,5 @@ neon = ["blake3/neon"]
 [dependencies]
 blake3 = { version = "1.5", features = ["mmap", "rayon"] }
 hex = "0.4.2"
-pyo3 = { version = "0.23.1", features = ["extension-module"] }
+pyo3 = { version = "0.23.3", features = ["extension-module"] }
 rayon = "1.2.1"
