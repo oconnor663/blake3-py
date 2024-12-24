@@ -43,6 +43,10 @@ jobs:
         # x86 python needs to be available for the win32 wheel
         architecture: ${{ ( matrix.os == 'windows-2025' && matrix.target == 'i686' ) && 'x86' || null }}
 
+    - name: Add python lib to PATH
+      if: matrix.os == 'windows-2025'
+      run: Add-Content $env:GITHUB_PATH "${{ env.pythonLocation }}\lib"
+
     - uses: PyO3/maturin-action@v1
       with:
         target: ${{ matrix.target }}
@@ -51,8 +55,6 @@ jobs:
         args: --release --out dist --interpreter '3.8 3.9 3.10 3.11 3.12 3.13 3.13t'
         rust-toolchain: stable
         docker-options: -e CI
-      env:
-        LIBPATH: ${{ env.pythonLocation }}\lib
 
     - run: ${{ (matrix.os == 'windows-2025' && 'dir') || 'ls -ltra' }} dist/
 
