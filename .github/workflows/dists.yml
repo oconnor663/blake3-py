@@ -19,18 +19,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - { os: macos-latest,   target: x86_64 }
-        - { os: macos-latest,   target: aarch64 }
-        - { os: ubuntu-latest,  target: x86_64 }
-        - { os: ubuntu-latest,  target: aarch64 }
-        - { os: ubuntu-latest,  target: i686 }
-        - { os: ubuntu-latest,  target: armv7 }
-        - { os: ubuntu-latest,  target: ppc64le }
-        - { os: ubuntu-latest,  target: s390x }
-        - { os: ubuntu-latest,  target: x86_64,  manylinux: musllinux_1_1 }
-        - { os: ubuntu-latest,  target: aarch64, manylinux: musllinux_1_1 }
-        - { os: windows-latest, target: x86_64 }
-        - { os: windows-latest, target: i686 }
+        - { os: macos-15,     target: x86_64 }
+        - { os: macos-15,     target: aarch64 }
+        - { os: ubuntu-24.04, target: x86_64 }
+        - { os: ubuntu-24.04, target: aarch64 }
+        - { os: ubuntu-24.04, target: i686 }
+        - { os: ubuntu-24.04, target: armv7 }
+        - { os: ubuntu-24.04, target: ppc64le }
+        - { os: ubuntu-24.04, target: s390x }
+        - { os: ubuntu-24.04, target: x86_64,  manylinux: musllinux_1_1 }
+        - { os: ubuntu-24.04, target: aarch64, manylinux: musllinux_1_1 }
+        - { os: windows-2025, target: x86_64 }
+        - { os: windows-2025, target: i686 }
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -41,7 +41,7 @@ jobs:
         # pin to the latest supported python version
         python-version: "3.13"
         # x86 python needs to be available for the win32 wheel
-        architecture: ${{ ( matrix.os == 'windows-latest' && matrix.target == 'i686' ) && 'x86' || null }}
+        architecture: ${{ ( matrix.os == 'windows-2025' && matrix.target == 'i686' ) && 'x86' || null }}
 
     - uses: PyO3/maturin-action@v1
       with:
@@ -52,7 +52,7 @@ jobs:
         rust-toolchain: stable
         docker-options: -e CI
 
-    - run: ${{ (matrix.os == 'windows-latest' && 'dir') || 'ls -ltra' }} dist/
+    - run: ${{ (matrix.os == 'windows-2025' && 'dir') || 'ls -ltra' }} dist/
 
     - uses: actions/upload-artifact@v4
       with:
@@ -61,7 +61,7 @@ jobs:
 
   sdist:
     name: sdist
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
 
@@ -79,7 +79,7 @@ jobs:
   publish:
     if: github.event_name == 'release'
     needs: [wheel, sdist]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: write  # softprops/action-gh-release
