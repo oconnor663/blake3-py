@@ -14,52 +14,73 @@ concurrency:  # https://stackoverflow.com/questions/66335225#comment133398800_72
 
 jobs:
   wheel:
-    name: ${{ matrix.os }}-${{ matrix.target }}-${{ matrix.python-version }}-${{ matrix.manylinux }}
+    name: ${{ matrix.os }}-${{ matrix.target }}-${{ matrix.manylinux || 'auto' }}
     strategy:
       fail-fast: false
       matrix:
-        # Keep in sync with tests.yml
-        os: [macos-15, ubuntu-24.04, windows-2025]
-        manylinux: [auto]
-        target: [x86_64, aarch64]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.13t']
         include:
+        - { os: macos-15,     target: x86_64 }
+        - { os: macos-15,     target: aarch64 }
+        - { os: ubuntu-24.04, target: x86_64 }
+        - { os: ubuntu-24.04, target: aarch64 }
         - { os: ubuntu-24.04, target: i686 }
         - { os: ubuntu-24.04, target: armv7 }
         - { os: ubuntu-24.04, target: ppc64le }
         - { os: ubuntu-24.04, target: s390x }
-        - { os: ubuntu-24.04, manylinux: musllinux_1_1 }
-        - { os: windows-2025, target: i686}
-        exclude:
-        - { os: windows-2025, target: aarch64}
+        - { os: ubuntu-24.04, target: x86_64,  manylinux: musllinux_1_1 }
+        - { os: ubuntu-24.04, target: aarch64, manylinux: musllinux_1_1 }
+        - { os: windows-2025, target: x86_64 }
+        - { os: windows-2025, target: i686 }
 
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
 
-    # not yet merged https://github.com/actions/setup-python/pull/973#issuecomment-2495900996
-    - uses: Quansight-Labs/setup-python@v5
+    # keep in sync with tests.yml
+    # all python versions need to be present for linking to succeed
+    - uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.8'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-
-    - name: Add python lib to PATH
-      if: startsWith(matrix.os, 'windows')
-      run: Add-Content $env:GITHUB_PATH "${{ env.pythonLocation }}\lib"
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
+    - uses: Quansight-Labs/setup-python@v5 # https://github.com/actions/setup-python/pull/973#issuecomment-2495900996
+      with:
+        python-version: '3.13t'
+        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
 
     - uses: PyO3/maturin-action@v1
       with:
         target: ${{ matrix.target }}
-        manylinux: ${{ matrix.manylinux }}
-        args: --release --out dist --interpreter ${{ matrix.python-version }}
+        manylinux: ${{ matrix.manylinux || 'auto' }}
+        # keep in sync with tests.yml
+        args: --release --out dist --interpreter '3.8 3.9 3.10 3.11 3.12 3.13 3.13t'
         rust-toolchain: stable
         docker-options: -e CI
 
-    - run: ${{ ( startsWith(matrix.os, 'windows') && 'dir') || 'ls -ltra' }} dist/
+    - run: ${{ (startsWith(matrix.os, 'windows') && 'dir') || 'ls -ltra' }} dist/
 
     - uses: actions/upload-artifact@v4
       with:
-        name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.python-version }}-${{ matrix.manylinux }}
+        name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.manylinux || 'auto' }}
         path: dist
 
   sdist:
