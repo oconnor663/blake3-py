@@ -18,6 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Keep in sync with tests.yml
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.13t']
         include:
         - { os: macos-15,     target: x86_64 }
         - { os: macos-15,     target: aarch64 }
@@ -38,36 +40,26 @@ jobs:
 
     - uses: actions/setup-python@v5
       with:
-        # 3.8 is not available by default on windows-2025 runner
-        python-version: "3.8"
-        # x86 python needs to be available for the win32 wheel
-        architecture: ${{ ( matrix.os == 'windows-2025' && matrix.target == 'i686' ) && 'x86' || null }}
-
-    - uses: actions/setup-python@v5
-      with:
-        # pin to the latest supported python version
-        python-version: "3.13"
-        # x86 python needs to be available for the win32 wheel
-        architecture: ${{ ( matrix.os == 'windows-2025' && matrix.target == 'i686' ) && 'x86' || null }}
+        python-version: ${{ matrix.python-version }}
+        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
 
     - name: Add python lib to PATH
-      if: matrix.os == 'windows-2025'
+      if: startsWith(matrix.os, 'windows')
       run: Add-Content $env:GITHUB_PATH "${{ env.pythonLocation }}\lib"
 
     - uses: PyO3/maturin-action@v1
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux || 'auto' }}
-        # Keep in sync with tests.yml
-        args: --release --out dist --interpreter ${{ (matrix.os == 'windows-2025' && '3.8 3.9 3.10 3.11 3.12 3.13') || '3.8 3.9 3.10 3.11 3.12 3.13 3.13t' }}
+        args: --release --out dist --interpreter ${{ matrix.python-version }}
         rust-toolchain: stable
         docker-options: -e CI
 
-    - run: ${{ (matrix.os == 'windows-2025' && 'dir') || 'ls -ltra' }} dist/
+    - run: ${{ ( startsWith(matrix.os, 'windows') && 'dir') || 'ls -ltra' }} dist/
 
     - uses: actions/upload-artifact@v4
       with:
-        name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.manylinux || 'auto' }}
+        name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.python-version }}-${{ matrix.manylinux || 'auto' }}
         path: dist
 
   sdist:
