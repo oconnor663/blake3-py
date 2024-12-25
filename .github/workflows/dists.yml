@@ -19,20 +19,19 @@ jobs:
       fail-fast: false
       matrix:
         # Keep in sync with tests.yml
+        os: [macos-15, ubuntu-24.04, windows-2025]
+        manylinux: [auto]
+        target: [x86_64, aarch64]
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.13t']
         include:
-        - { os: macos-15,     target: x86_64,  manylinux: auto }
-        - { os: macos-15,     target: aarch64, manylinux: auto }
-        - { os: ubuntu-24.04, target: x86_64,  manylinux: auto }
-        - { os: ubuntu-24.04, target: aarch64, manylinux: auto }
-        - { os: ubuntu-24.04, target: i686,    manylinux: auto }
-        - { os: ubuntu-24.04, target: armv7,   manylinux: auto }
-        - { os: ubuntu-24.04, target: ppc64le, manylinux: auto }
-        - { os: ubuntu-24.04, target: s390x,   manylinux: auto }
-        - { os: ubuntu-24.04, target: x86_64,  manylinux: musllinux_1_1 }
-        - { os: ubuntu-24.04, target: aarch64, manylinux: musllinux_1_1 }
-        - { os: windows-2025, target: x86_64,  manylinux: auto }
-        - { os: windows-2025, target: i686,    manylinux: auto }
+        - { os: ubuntu-24.04, target: i686 }
+        - { os: ubuntu-24.04, target: armv7 }
+        - { os: ubuntu-24.04, target: ppc64le }
+        - { os: ubuntu-24.04, target: s390x }
+        - { os: ubuntu-24.04, manylinux: musllinux_1_1 }
+        - { os: windows-2025, target: i686}
+        exclude:
+        - { os: windows-2025, target: aarch64}
 
     runs-on: ${{ matrix.os }}
     steps:
