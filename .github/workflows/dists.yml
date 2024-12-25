@@ -14,7 +14,7 @@ concurrency:  # https://stackoverflow.com/questions/66335225#comment133398800_72
 
 jobs:
   wheel:
-    name: ${{ matrix.os }}-${{ matrix.target }}-${{ matrix.manylinux || 'auto' }}
+    name: ${{ matrix.os }}-${{ matrix.target }}-${{ matrix.python-version }}-${{ matrix.manylinux || 'auto' }}
     strategy:
       fail-fast: false
       matrix:
@@ -38,7 +38,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: actions/setup-python@v5
+    # not yet merged https://github.com/actions/setup-python/pull/973#issuecomment-2495900996
+    - uses: Quansight-Labs/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
