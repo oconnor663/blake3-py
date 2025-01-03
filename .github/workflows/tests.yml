@@ -3,7 +3,7 @@ name: tests
 on:
   pull_request:
   push:
-    branches: '**'  # not tags
+    branches: [master]
   workflow_dispatch:  # allows running workflow manually from the Actions tab
 
 concurrency:  # https://stackoverflow.com/questions/66335225#comment133398800_72408109
