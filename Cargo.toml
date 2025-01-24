@@ -13,6 +13,8 @@ homepage = "https://github.com/oconnor663/blake3-py"
 license = "CC0-1.0 OR Apache-2.0"
 readme = "README.md"
 edition = "2021"
+# MSRV, keep in sync with .github/workflows/tests.yml
+rust-version = "1.66"
 
 [lib]
 crate-type = ["cdylib"]

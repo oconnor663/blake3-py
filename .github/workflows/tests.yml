@@ -20,7 +20,7 @@ jobs:
         #   - dists.yml
         #   - the c_impl tests below
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-        rust-toolchain: [stable, beta, nightly]
+        rust-toolchain: ["1.66", stable, beta, nightly]
         platform: [
           { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu", name: "ubuntu-x64" },
           { os: "macos-13",       python-architecture: "x64", rust-target: "x86_64-apple-darwin",      name: "macos-x64" },
