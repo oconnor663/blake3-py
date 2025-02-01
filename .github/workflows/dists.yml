@@ -131,7 +131,7 @@ jobs:
 
     # 2.2.0 has a bug ref https://github.com/softprops/action-gh-release/issues/555
     - name: Upload release assets
-      uses: softprops/action-gh-release@v2.1.0
+      uses: softprops/action-gh-release@v2.2.1
       with:
         files: dist/*
 
