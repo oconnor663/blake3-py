@@ -73,7 +73,7 @@ jobs:
         docker-options: -e CI
 
     # the following two steps are separated out because of a setup-python issue on windows causing maturin-action to pick up 3.13t exe instead of 3.13t exe https://github.com/oconnor663/blake3-py/issues/52
-    - uses: Quansight-Labs/setup-python@v5 # 3.13t support not yet merged ref https://github.com/actions/setup-python/pull/973#issuecomment-2495900996
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.13t'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
