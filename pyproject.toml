@@ -1,6 +1,6 @@
 [project]
 name = "blake3"
-version = "1.0.4"
+dynamic = ["version"]
 
 [build-system]
 requires = ["maturin>=1.0,<2"]
