@@ -1,3 +1,7 @@
+[project]
+name = "blake3"
+dynamic = ["version"]
+
 [build-system]
 requires = ["maturin>=1.0,<2"]
 build-backend = "maturin"
