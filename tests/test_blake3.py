@@ -16,7 +16,7 @@ HERE = Path(__file__).parent
 VECTORS = json.load((HERE / "test_vectors.json").open())
 
 
-def make_input(length: int) -> bytes:
+def make_input(length: int) -> bytearray:
     b = bytearray(length)
     for i in range(len(b)):
         b[i] = i % 251
