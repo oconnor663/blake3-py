@@ -63,7 +63,7 @@ jobs:
         python-version: '3.13'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
 
-    - uses: PyO3/maturin-action@v1.49.1
+    - uses: PyO3/maturin-action@v1.49.3
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
@@ -78,7 +78,7 @@ jobs:
         python-version: '3.13t'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
 
-    - uses: PyO3/maturin-action@v1.49.1
+    - uses: PyO3/maturin-action@v1.49.3
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
@@ -100,7 +100,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: PyO3/maturin-action@v1.49.1
+    - uses: PyO3/maturin-action@v1.49.3
       with:
         command: sdist
         args: --out dist
