@@ -26,4 +26,4 @@ neon = ["blake3/neon"]
 blake3 = { version = "1.5.5", features = ["mmap", "rayon"] }
 hex = "0.4.3"
 pyo3 = { version = "0.25.0", features = ["extension-module"] }
-rayon = "1.10.0"
+rayon = "1.10.*"
