@@ -264,4 +264,8 @@ setuptools.setup(
     license="CC0-1.0 OR Apache-2.0",
     url="https://github.com/oconnor663/blake3-py/tree/master/c_impl",
     ext_modules=[prepare_extension()],
+    # keep dependencies in sync with pyproject.toml
+    install_requires=[
+        "typing_extensions >= 4.6.0; python_version <= '3.11'",
+    ],
 )

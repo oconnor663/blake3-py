@@ -5,6 +5,7 @@ dynamic = ["version"]
 #   - .github/workflows/dists.yml
 #   - .github/workflows/tests.yml
 requires-python = ">=3.8"
+# keep dependencies in sync with c_impl/setup.py
 dependencies = [
     "typing_extensions >= 4.6.0; python_version <= '3.11'",
 ]
