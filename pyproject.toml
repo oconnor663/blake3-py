@@ -1,7 +1,13 @@
 [project]
 name = "blake3"
 dynamic = ["version"]
+# keep python versions in sync with
+#   - .github/workflows/dists.yml
+#   - .github/workflows/tests.yml
 requires-python = ">=3.8"
+dependencies = [
+    "typing_extensions >= 4.6.0; python_version <= '3.11'",
+]
 
 [build-system]
 requires = ["maturin>=1.0,<2"]

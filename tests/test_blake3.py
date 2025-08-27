@@ -7,7 +7,15 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
-from typing import Any
+from typing import (
+    Any,
+    Dict,
+    cast,
+)
+if sys.version_info >= (3, 12):
+    from collections.abc import Buffer
+else:
+    from typing_extensions import Buffer
 
 from blake3 import blake3, __version__
 
@@ -152,10 +160,10 @@ def test_strided_array_fails() -> None:
     strided = numpy.lib.stride_tricks.as_strided(unstrided, shape=[2], strides=[2])
     assert bytes(strided) == bytes([1, 3])
     # Unstrided works fine.
-    blake3(unstrided)
+    blake3(cast(Buffer, unstrided))
     try:
         # But strided fails.
-        blake3(strided)
+        blake3(cast(Buffer, strided))
     # We get BufferError in Rust and ValueError in C.
     except (BufferError, ValueError):
         pass
@@ -419,7 +427,7 @@ def test_output_overflows_isize() -> None:
 # https://github.com/mkdocstrings/mkdocstrings/issues/451 and
 # https://github.com/PyO3/maturin/discussions/1365
 def test_module_name() -> None:
-    global_scope: dict[str, Any] = {}
+    global_scope: Dict[str, Any] = {}
     exec(f"from {blake3.__module__} import blake3 as foobar", global_scope)
     assert global_scope["foobar"] is blake3
 
