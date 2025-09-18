@@ -17,8 +17,10 @@ jobs:
     strategy:
       matrix:
         # Keep in sync with:
+        #   - pyproject.toml
         #   - dists.yml
         #   - the c_impl tests below
+        #   - the mypy checks below
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         rust-toolchain: ["1.66", stable, beta, nightly]
         platform: [
@@ -60,8 +62,10 @@ jobs:
     strategy:
       matrix:
         # Keep in sync with:
+        #   - pyproject.toml
         #   - dists.yml
         #   - the rust_impl tests above
+        #   - the mypy checks below
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         platform: [
           # This list should be kept in sync with dists.yml.
@@ -106,13 +110,21 @@ jobs:
   mypy:
     name: "mypy"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Keep in sync with:
+        #   - pyproject.toml
+        #   - dists.yml
+        #   - the rust_impl tests above
+        #   - the c_impl tests above
+        python-version: ["3.8", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: ${{ matrix.python-version }}
       # We use numpy to test the error case of trying to hash a strided buffer.
       - name: Install pytest, numpy, and mypy
         run: pip install pytest numpy mypy
       - name: Run mypy
-        run: python -u -m mypy --strict tests/test_blake3.py
+        run: python -u -m mypy --strict blake3.pyi tests/test_blake3.py

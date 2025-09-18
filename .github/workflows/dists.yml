@@ -36,7 +36,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # keep python versions in sync with tests.yml
+    # keep python versions in sync with
+    #   - pyproject.toml
+    #   - tests.yml
     # all python versions need to be present for linking to succeed
     - uses: actions/setup-python@v5
       with:
