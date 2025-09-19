@@ -34,7 +34,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     # keep python versions in sync with
     #   - pyproject.toml
@@ -100,7 +100,7 @@ jobs:
     name: sdist
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - uses: PyO3/maturin-action@v1.49.4
       with:
