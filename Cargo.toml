@@ -13,8 +13,6 @@ homepage = "https://github.com/oconnor663/blake3-py"
 license = "CC0-1.0 OR Apache-2.0"
 readme = "README.md"
 edition = "2021"
-# MSRV, keep in sync with .github/workflows/tests.yml
-rust-version = "1.66"
 
 [lib]
 crate-type = ["cdylib"]
@@ -26,5 +24,4 @@ neon = ["blake3/neon"]
 blake3 = { version = "1.5.5", features = ["mmap", "rayon"] }
 hex = "0.4.3"
 pyo3 = { version = "0.26.0", features = ["extension-module"] }
-rayon = "~1.10.0"
-rayon-core = "~1.12.1"
+rayon = "1.11.0"
