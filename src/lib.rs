@@ -408,7 +408,7 @@ impl Blake3Class {
     ///   to 0.
     #[pyo3(signature=(length=32, *, seek=0))]
     fn digest<'p>(&self, py: Python<'p>, length: usize, seek: u64) -> PyResult<Bound<'p, PyBytes>> {
-        if length > isize::max_value() as usize {
+        if length > isize::MAX as usize {
             return Err(PyOverflowError::new_err("length overflows isize"));
         }
         let mut reader = self.rust_hasher.lock().unwrap().finalize_xof();
@@ -444,7 +444,7 @@ impl Blake3Class {
         length: usize,
         seek: u64,
     ) -> PyResult<Bound<'p, PyString>> {
-        if length > (isize::max_value() / 2) as usize {
+        if length > (isize::MAX / 2) as usize {
             return Err(PyOverflowError::new_err("length overflows isize"));
         }
         let bytes = self.digest(py, length, seek)?;
