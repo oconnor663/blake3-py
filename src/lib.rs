@@ -280,7 +280,7 @@ impl Blake3Class {
                 // Release the GIL while we hash this slice, so that we don't
                 // block other threads. But again, see all the comments above
                 // about data race risks.
-                py.allow_threads(update_closure);
+                py.detach(update_closure);
             } else {
                 // Don't bother releasing the GIL for short updates.
                 update_closure();
@@ -326,7 +326,7 @@ impl Blake3Class {
             // Release the GIL while we hash this slice, so that we don't
             // block other threads. But again, see all the comments above
             // about data race risks.
-            py.allow_threads(update_closure);
+            py.detach(update_closure);
         } else {
             // Don't bother releasing the GIL for short updates.
             update_closure();
@@ -347,7 +347,7 @@ impl Blake3Class {
         path: PathBuf,
     ) -> PyResult<PyRefMut<'this, Self>> {
         let this_mut = &mut *this;
-        py.allow_threads(|| -> PyResult<()> {
+        py.detach(|| -> PyResult<()> {
             match &mut this_mut.threading_mode {
                 ThreadingMode::Single => {
                     this_mut.rust_hasher.lock().unwrap().update_mmap(&path)?;
@@ -417,7 +417,7 @@ impl Blake3Class {
             debug_assert_eq!(length, slice.len());
             if length >= GIL_MINSIZE {
                 // This could be a long-running operation. Release the GIL.
-                py.allow_threads(|| reader.fill(slice));
+                py.detach(|| reader.fill(slice));
             } else {
                 // Don't bother releasing the GIL for short outputs.
                 reader.fill(slice);
