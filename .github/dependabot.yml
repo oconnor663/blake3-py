@@ -5,9 +5,9 @@ updates:
   directory: /
   schedule:
     interval: monthly
-    groups:
-      github-actions:
-        patterns: ["*"]
+  groups:
+    github-actions:
+      patterns: ["*"]
 - package-ecosystem: cargo
   directory: /
   schedule:
