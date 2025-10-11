@@ -64,7 +64,7 @@ jobs:
       with:
         python-version: '3.13'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6
       with:
         python-version: '3.14'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
@@ -93,7 +93,7 @@ jobs:
         docker-options: -e CI
 
     # same as above
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6
       with:
         python-version: '3.14t'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
