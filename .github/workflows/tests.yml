@@ -21,7 +21,7 @@ jobs:
         #   - dists.yml
         #   - the c_impl tests below
         #   - the mypy checks below
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         rust-toolchain: ["1.80", stable, beta, nightly]
         platform: [
           { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu", name: "ubuntu-x64" },
@@ -66,7 +66,7 @@ jobs:
         #   - dists.yml
         #   - the rust_impl tests above
         #   - the mypy checks below
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         platform: [
           # This list should be kept in sync with dists.yml.
           { os: "ubuntu-latest",  python-architecture: "x64", name: "ubuntu-x64" },
@@ -117,7 +117,7 @@ jobs:
         #   - dists.yml
         #   - the rust_impl tests above
         #   - the c_impl tests above
-        python-version: ["3.8", "3.13"]
+        python-version: ["3.8", "3.14"]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
