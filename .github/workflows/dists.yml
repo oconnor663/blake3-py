@@ -78,21 +78,13 @@ jobs:
         rust-toolchain: stable
         docker-options: -e CI
 
-    # the following two steps are separated out because of a setup-python issue on windows causing maturin-action to pick up 3.13t exe instead of 3.13t exe https://github.com/oconnor663/blake3-py/issues/52
+    # The freethreaded builds are separated out because of a setup-python issue
+    # on Windows causing maturin-action to pick up e.g. the 3.13t exe instead
+    # of the 3.13 exe. See https://github.com/oconnor663/blake3-py/issues/52.
     - uses: actions/setup-python@v6
       with:
         python-version: '3.13t'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-    - uses: PyO3/maturin-action@v1.49.4
-      with:
-        target: ${{ matrix.target }}
-        manylinux: ${{ matrix.manylinux }}
-        # keep python versions in sync with tests.yml
-        args: --release --out dist --interpreter '3.13t'
-        rust-toolchain: stable
-        docker-options: -e CI
-
-    # same as above
     - uses: actions/setup-python@v6
       with:
         python-version: '3.14t'
@@ -102,7 +94,7 @@ jobs:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
         # keep python versions in sync with tests.yml
-        args: --release --out dist --interpreter '3.14t'
+        args: --release --out dist --interpreter '3.13t 3.14t'
         rust-toolchain: stable
         docker-options: -e CI
 
