@@ -18,6 +18,16 @@ requires-python = ">=3.8"
 dependencies = [
     "typing_extensions >= 4.6.0; python_version <= '3.11'",
 ]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: Free Threading",
+  "Programming Language :: Rust",
+  "Topic :: Security",
+  "Topic :: Security :: Cryptography",
+  "Topic :: Utilities",
+]
 
 [build-system]
 requires = ["maturin>=1.0,<2"]
