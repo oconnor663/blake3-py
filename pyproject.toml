@@ -1,6 +1,18 @@
 [project]
 name = "blake3"
-dynamic = ["version"]
+# http://maturin.rs/metadata.html#dynamic-metadata
+dynamic = [
+    "version",
+    "summary",
+    "description",
+    "description_content_type",
+    "keywords",
+    "home_page",
+    "author",
+    "author_email",
+    "license",
+    "project_url",
+]
 # keep python versions in sync with
 #   - .github/workflows/dists.yml
 #   - .github/workflows/tests.yml
