@@ -10,89 +10,131 @@ use std::sync::Mutex;
 // This is the same as HASHLIB_GIL_MINSIZE in CPython.
 const GIL_MINSIZE: usize = 2048;
 
-unsafe fn unsafe_slice_from_buffer<'a>(data: &'a Bound<PyAny>) -> PyResult<&'a [u8]> {
-    // First see if we can get a u8 slice. This is the common case.
-    match unsafe_slice_from_typed_buffer::<u8>(data) {
-        // If that worked, return it.
-        Ok(slice) => Ok(slice),
-        // If not, then see if we can get an i8 buffer.
-        Err(u8_err) => match unsafe_slice_from_typed_buffer::<i8>(data) {
-            // That worked, and we've pointer-cast it to &[u8].
-            Ok(slice) => Ok(slice),
-            // That didn't work either. Return the first error from above,
-            // because if they're different, the first one is more likely to be
-            // relevant to the caller.
-            Err(_i8_err) => Err(u8_err),
-        },
+// We want to support buffers of both signed and unsigned bytes, and for hashing
+// purposes we'll pointer cast both to &[u8]. PyO3 gives us typed buffers, so we
+// use this enum to wrap them.
+enum BytesPyBuffer {
+    U8(PyBuffer<u8>),
+    I8(PyBuffer<i8>),
+}
+
+impl BytesPyBuffer {
+    /// Try to get a BytesPyBuffer from any Python object. This succeeds for
+    /// Python types like `bytes` and `bytearray` that support the buffer
+    /// protocol, but it fails for most other types.
+    fn get(data: &Bound<PyAny>) -> PyResult<Self> {
+        // First see if we can get a u8 buffer. This is the common case.
+        match PyBuffer::<u8>::get(data) {
+            Ok(pybuffer) => Ok(Self::U8(pybuffer)),
+            // If not, then see if we can get an i8 buffer.
+            Err(u8_err) => match PyBuffer::<i8>::get(data) {
+                Ok(pybuffer) => Ok(Self::I8(pybuffer)),
+                // That didn't work either. Return the first error from above.
+                // If they're different, the first one is more likely to be
+                // relevant to the caller.
+                Err(_) => Err(u8_err),
+            },
+        }
+    }
+
+    /// Get a &[u8] from a PyBuffer<u8> or a PyBuffer<i8>. This function is
+    /// unsafe, because the returned slice could be mutably aliased. See the
+    /// comments below.
+    unsafe fn as_bytes(&self) -> PyResult<&[u8]> {
+        match self {
+            // These arms look identical, but note that they call
+            // bytes_from_pybuffer with different type parameters. That's why
+            // the enum is needed.
+            Self::U8(pybuffer) => unsafe { bytes_from_pybuffer(pybuffer) },
+            Self::I8(pybuffer) => unsafe { bytes_from_pybuffer(pybuffer) },
+        }
     }
 }
 
-unsafe fn unsafe_slice_from_typed_buffer<'a, T: pyo3::buffer::Element>(
-    data: &'a Bound<PyAny>,
-) -> PyResult<&'a [u8]> {
-    // Assert that we only ever try this for u8 and i8.
-    assert_eq!(std::mem::size_of::<T>(), std::mem::size_of::<u8>());
-    // If this object implements the buffer protocol for the element type we're
-    // looking for, get a reference to that underlying buffer. We'll fail here
-    // with a TypeError if `data` isn't a buffer at all.
-    let pybuffer = PyBuffer::<T>::get(data)?;
-    // Get a slice from the buffer. This fails if the buffer is not contiguous,
-    // Regular bytes types are almost always contiguous, but things like NumPy
-    // arrays can be "strided", and those will fail here.
-    if let Some(readonly_slice) = pybuffer.as_slice(data.py()) {
-        // We got a slice. For safety, PyO3 gives it to us as
-        // &[ReadOnlyCell<T>], which is pretty much the same as a &[Cell<T>].
-        // We're going to use unsafe code to cast that into a &[u8], which is
-        // the only form blake3::Hasher::update will accept. This raises a few
-        // risks:
-        //
-        // - We're potentially casting from &[i8] to &[u8]. I believe this is
-        //   always allowed. There's a possibility that it could behave
-        //   differently on (extremely rare) one's complement systems, compared
-        //   to (typical) two's complement systems. However, I don't think Rust
-        //   even supports one's complement systems, and also "reinterpret the
-        //   bit pattern as unsigned" is likely to be what the caller expects
-        //   anyway.
-        // - This buffer might be aliased. This is the main reason why
-        //   PyByteArray::as_bytes is unsafe and why PyO3 uses the ReadOnlyCell
-        //   type. If we mutated any other buffers, or ran any unknown Python
-        //   code that could do anything (including any object finalizer), we
-        //   could end up mutating this buffer too. Luckily we don't do either
-        //   of those things in this module.
-        // - We're breaking the lifetime relationship between this slice and
-        //   `py`, because we're going to release the GIL during update. That
-        //   means *other threads* might mutate this buffer.
-        //
-        // The last point above is the most serious. Python locks buffers to
-        // prevent resizing while we're looking at them, so we don't need to
-        // worry about out-of-bounds reads or use-after-free here, but it's
-        // still possible for another thread to write to the bytes of the buffer
-        // while we're reading them. In practice, the result of a race here is
-        // "probably just junk bytes", but technically this violates the
-        // requirements of the Rust memory model, and there may be obscure
-        // circumstances (now or in the future) where it does something worse.
-        //
-        // However, this isn't just our problem. The standard hash
-        // implementations in Python's hashlib have the same behavior, and you
-        // can trigger a real data race with standard types like this:
-        // https://gist.github.com/oconnor663/c69cb4dbffb9b13bbced3fe8ce2181ac.
-        // This data race violates the requirements of the C memory model also.
-        //
-        // At the end of the day, even if this race turns out to be exploitable
-        // (which appears unlikely), only pathological programs should be able
-        // to trigger it. Writing to a buffer concurrently from another thread
-        // while hashing it is a very weird thing to do, and it's almost
-        // guaranteed to be a correctness bug, regardless of whether it's also a
-        // soundness bug.
-        let readonly_ptr: *const pyo3::buffer::ReadOnlyCell<T> = readonly_slice.as_ptr();
+unsafe fn bytes_from_pybuffer<T: pyo3::buffer::Element>(pybuffer: &PyBuffer<T>) -> PyResult<&[u8]> {
+    // This function lets us support both signed and unsigned byte arrays
+    // without copy-pasting too much code. Assert that we don't use it for
+    // anything larger than a byte. There's nothing necessarily evil about
+    // hashing an array of u32's, but it would raise endianness issues, and in
+    // any case we don't plan to do it.
+    assert_eq!(std::mem::size_of::<T>(), 1);
+
+    // Check that the buffer is contiguous. Regular bytes/bytearray types are
+    // always contiguous, but e.g. some NumPy arrays can be "strided", and we
+    // want to reject those. This is the same check that `PyBuffer::as_slice`
+    // does internally.
+    if !pybuffer.is_c_contiguous() {
+        return Err(PyBufferError::new_err("buffer is not contiguous"));
+    }
+
+    // Construct a &[u8] slice over the buffer. This is different from
+    // `PyBuffer::as_slice` in a couple ways:
+    //
+    // - We're potentially pointer-casting from &[i8] to &[u8]. This is fine,
+    //   and there are safe APIs for this sort of thing (e.g. `bytemuck`).
+    // - `as_slice` returns `&[ReadOnlyCell<T>]` instead of `&[T]`, because the
+    //   slice might be mutably aliased. We're exposing &[u8] directly. This is
+    //   not obviously fine, and we need to be careful.
+    //
+    // There are several different types of issues that `PyBuffer` (which we're
+    // keeping) and `ReadOnlyCell` (which we're casting away) protect us from:
+    //
+    // - Someone might try to *resize* the buffer while we're reading it, making
+    //   our reads UB. The `PyBuffer` "locks" the buffer to prevent this as long
+    //   as we keep it alive. This slice is lifetime-bound to the `PyBuffer`
+    //   once we return it, so we're ok here.
+    // - We might accidentally write to this buffer ourselves, by writing to a
+    //   "different" buffer that turns out to be an alias, or by running any
+    //   Python code we don't control that happens to do the same thing. We
+    //   won't do any writes to buffers we didn't create internally, and we
+    //   won't run any Python code (even finalizers) while this slice is alive,
+    //   so I think we're ok here too. (We also won't use any invariant-checking
+    //   functions like `std::str::from_utf8` that could get fooled by illegal
+    //   mutable aliasing.)
+    // - Another thread might do the same thing, totally out of our control.
+    //   In addition to problems that we can cause by doing this ourselves, this
+    //   is also a *data race*, which is per se UB.
+    //
+    // The third problem above is the complicated one, because we need to think
+    // about the GIL:
+    //
+    // - The GIL normally blocks other Python threads from running while our
+    //   Rust code is running. That would make this whole problem go away.
+    // - However, we don't *want* to block other Python threads while we hash
+    //   large inputs, so like the C code in Python's `hashlib` module we
+    //   release the GIL, which makes the problem come back.
+    // - Even if we didn't release the GIL, other Rust extensions or C
+    //   extensions might release it, and then we might race with them.
+    // - Freethreaded builds of Python 3.13+ don't even have a GIL, so the
+    //   question of whether anyone releases it is kind of irrelevant.
+    //
+    // I think the right way to think about this is to forget about the GIL and
+    // just ask what happens if another thread writes to the bytes that we're
+    // hashing, while we're hashing them. Clearly part of the story is that
+    // we'll read and hash "junk bytes" (some unpredictable mix of before and
+    // after, maybe even an "out of thin air" read under exotic circumstances).
+    // That much is expected, and it's almost certainly a bug that the caller
+    // need to fix on their end. But the more vexing question is, can anything
+    // *else* happen? Could this data race trigger "real" UB like corrupting
+    // arbitrary memory or executing an attacker's bitcoin mining virus?
+    //
+    // This is a thorny problem, and the relevant standards make no guarantees.
+    // However, it isn't just our problem. The C implementations in Python's
+    // `hashlib` have the exact same behavior, and you can trigger a real data
+    // race with standard types like this:
+    // https://gist.github.com/oconnor663/c69cb4dbffb9b13bbced3fe8ce2181ac.
+    // This data race violates the requirements of the C memory model also.
+    //
+    // At the end of the day, even if this race turns out to be exploitable
+    // (which I think is unlikely), only pathological programs should be able to
+    // trigger it. Writing to a buffer concurrently from another thread while
+    // hashing it is a very weird thing to do, and it's almost guaranteed to be
+    // a correctness bug, regardless of whether it's also a soundness bug.
+    unsafe {
         Ok(std::slice::from_raw_parts(
-            readonly_ptr as *const u8,
-            readonly_slice.len(),
+            pybuffer.buf_ptr() as *const u8,
+            pybuffer.len_bytes(),
         ))
-    } else {
-        // We couldn't get a slice, probably because this is a strided NumPy
-        // array or something like that.
-        Err(PyBufferError::new_err("buffer is not contiguous"))
     }
 }
 
@@ -206,10 +248,10 @@ impl Blake3Class {
         max_threads = 1,
         usedforsecurity = true
     ))]
-    fn new(
-        py: Python,
-        data: Option<&Bound<PyAny>>,
-        key: Option<&Bound<PyAny>>,
+    fn new<'py>(
+        py: Python<'py>,
+        data: Option<&Bound<'py, PyAny>>,
+        key: Option<&Bound<'py, PyAny>>,
         derive_key_context: Option<&str>,
         max_threads: isize,
         usedforsecurity: bool,
@@ -220,14 +262,13 @@ impl Blake3Class {
             // The default, unkeyed hash function.
             (None, None) => upstream_blake3::Hasher::new(),
             // The keyed hash function.
-            (Some(key_buf), None) => {
-                // Use the same function to get the key buffer as `update` uses
-                // to get the data buffer. In this case it isn't for lifetime
-                // reasons, but because we want to handle the buffer protocol in
-                // the same way to support bytes/bytearray/memoryview etc. Even
-                // though we just copy the bytes immediately, technically this
-                // is the same race condition.
-                let key_slice: &[u8] = unsafe { unsafe_slice_from_buffer(key_buf)? };
+            (Some(key_obj), None) => {
+                // Use the same `as_bytes` helper function to get the key buffer
+                // as `update` uses to get the data buffer. Even though we just
+                // copy the bytes immediately here, technically this risks the
+                // same race conditions.
+                let key_buf = BytesPyBuffer::get(key_obj)?;
+                let key_slice: &[u8] = unsafe { key_buf.as_bytes()? };
                 let key_array: &[u8; 32] = if let Ok(array) = key_slice.try_into() {
                     array
                 } else {
@@ -242,7 +283,7 @@ impl Blake3Class {
             (Some(_), Some(_)) => {
                 return Err(PyValueError::new_err(
                     "cannot use key and derive_key_context at the same time",
-                ))
+                ));
             }
         };
 
@@ -256,27 +297,27 @@ impl Blake3Class {
             _ => return Err(PyValueError::new_err("not a valid number of threads")),
         };
 
-        if let Some(data) = data {
-            // Get a slice that's not tied to the `py` lifetime.
-            // XXX: The safety situation here is a bit complicated. See all the
-            //      comments in unsafe_slice_from_buffer.
-            let slice: &[u8] = unsafe { unsafe_slice_from_buffer(data)? };
+        if let Some(data_obj) = data {
+            // XXX: Get a &[u8] slice of the data bytes. The safety situation
+            // here is complicated. See all the comments in bytes_from_pybuffer.
+            let data_buf = BytesPyBuffer::get(data_obj)?;
+            let data_slice: &[u8] = unsafe { data_buf.as_bytes()? };
 
             // Since rust_hasher isn't yet shared, we don't need to access it
             // through the Mutex here like we do in update() below.
             let mut update_closure = || match &threading_mode {
                 ThreadingMode::Single => {
-                    rust_hasher.update(slice);
+                    rust_hasher.update(data_slice);
                 }
                 ThreadingMode::Auto => {
-                    rust_hasher.update_rayon(slice);
+                    rust_hasher.update_rayon(data_slice);
                 }
                 ThreadingMode::Pool { pool, .. } => pool.install(|| {
-                    rust_hasher.update_rayon(slice);
+                    rust_hasher.update_rayon(data_slice);
                 }),
             };
 
-            if slice.len() >= GIL_MINSIZE {
+            if data_slice.len() >= GIL_MINSIZE {
                 // Release the GIL while we hash this slice, so that we don't
                 // block other threads. But again, see all the comments above
                 // about data race risks.
@@ -304,25 +345,33 @@ impl Blake3Class {
         py: Python,
         data: &Bound<PyAny>,
     ) -> PyResult<PyRefMut<'this, Self>> {
-        // Get a slice that's not tied to the `py` lifetime.
-        // XXX: The safety situation here is a bit complicated. See all the
-        //      comments in unsafe_slice_from_buffer.
-        let slice: &[u8] = unsafe { unsafe_slice_from_buffer(data)? };
+        // XXX: Get a &[u8] slice of the data bytes. The safety situation here
+        // is complicated. See all the comments in bytes_from_pybuffer.
+        let data_buf = BytesPyBuffer::get(data)?;
+        let data_slice: &[u8] = unsafe { data_buf.as_bytes()? };
 
         let this_mut = &mut *this;
         let mut update_closure = || match &mut this_mut.threading_mode {
             ThreadingMode::Single => {
-                this_mut.rust_hasher.lock().unwrap().update(slice);
+                this_mut.rust_hasher.lock().unwrap().update(data_slice);
             }
             ThreadingMode::Auto => {
-                this_mut.rust_hasher.lock().unwrap().update_rayon(slice);
+                this_mut
+                    .rust_hasher
+                    .lock()
+                    .unwrap()
+                    .update_rayon(data_slice);
             }
             ThreadingMode::Pool { pool, .. } => pool.install(|| {
-                this_mut.rust_hasher.lock().unwrap().update_rayon(slice);
+                this_mut
+                    .rust_hasher
+                    .lock()
+                    .unwrap()
+                    .update_rayon(data_slice);
             }),
         };
 
-        if slice.len() >= GIL_MINSIZE {
+        if data_slice.len() >= GIL_MINSIZE {
             // Release the GIL while we hash this slice, so that we don't
             // block other threads. But again, see all the comments above
             // about data race risks.
