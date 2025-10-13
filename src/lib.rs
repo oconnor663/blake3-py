@@ -201,10 +201,29 @@ impl Clone for ThreadingMode {
 //   # Import the blake3 class from its canonical path. Avoid this in regular code, because the
 //   # canonical path is an internal implementation detail, and it could change in the future.
 //   from blake3.blake3 import blake3
-#[pyclass(name = "blake3", module = "blake3.blake3")]
+#[pyclass(name = "blake3", module = "blake3.blake3", frozen)]
 struct Blake3Class {
-    // We release the GIL while updating this hasher, which means that other
-    // threads could race to access it. Putting it in a Mutex keeps it safe.
+    // By default (currently), PyO3 pyclass objects use an atomic RefCell-like
+    // pattern to detect/prevent mutable aliasing. Rather than blocking, any
+    // mutably aliasing accesses instead raises an exception. Normally the GIL
+    // prevents this, but we release the GIL to hash long inputs, so ordinary
+    // races between Python threads can trigger this. And freethreaded Python
+    // builds have no GIL, so under those you can trigger this with any input
+    // length.
+    //
+    // Now, we *could* decide that that's fine. Racing to update a hasher gives
+    // you nondeterministic outputs, and it's hard to imagine a use case where
+    // that's not a bug. However, someone using BLAKE3 as a CSPRNG might reseed
+    // it periodically, and they might not care if other callers race with that.
+    // Also, reliably raising exceptions is defensible, but *occasionally*
+    // raising them is terrible. Users' tests will pass, and then their apps
+    // will crash in prod.
+    //
+    // Instead, we declare this class "frozen" above, meaning that only shared
+    // access is allowed. Then we use a Mutex internally to let us mutate the
+    // Hasher. This means that users will never see exceptions about mutable
+    // borrowing, and the PyO3 docs mention that they want to push the ecosystem
+    // in this direction. See: https://pyo3.rs/main/class.html#frozen-classes-opting-out-of-interior-mutability
     rust_hasher: Mutex<upstream_blake3::Hasher>,
     threading_mode: ThreadingMode,
 }
@@ -340,34 +359,27 @@ impl Blake3Class {
     /// Arguments:
     /// - `data` (required): The input bytes.
     #[pyo3(signature=(data, /))]
-    fn update<'this>(
-        mut this: PyRefMut<'this, Self>,
+    fn update<'py>(
+        this: Bound<'py, Self>,
         py: Python,
         data: &Bound<PyAny>,
-    ) -> PyResult<PyRefMut<'this, Self>> {
+    ) -> PyResult<Bound<'py, Self>> {
+        let self_ = this.get();
+
         // XXX: Get a &[u8] slice of the data bytes. The safety situation here
         // is complicated. See all the comments in bytes_from_pybuffer.
         let data_buf = BytesPyBuffer::get(data)?;
         let data_slice: &[u8] = unsafe { data_buf.as_bytes()? };
 
-        let this_mut = &mut *this;
-        let mut update_closure = || match &mut this_mut.threading_mode {
+        let update_closure = || match &self_.threading_mode {
             ThreadingMode::Single => {
-                this_mut.rust_hasher.lock().unwrap().update(data_slice);
+                self_.rust_hasher.lock().unwrap().update(data_slice);
             }
             ThreadingMode::Auto => {
-                this_mut
-                    .rust_hasher
-                    .lock()
-                    .unwrap()
-                    .update_rayon(data_slice);
+                self_.rust_hasher.lock().unwrap().update_rayon(data_slice);
             }
             ThreadingMode::Pool { pool, .. } => pool.install(|| {
-                this_mut
-                    .rust_hasher
-                    .lock()
-                    .unwrap()
-                    .update_rayon(data_slice);
+                self_.rust_hasher.lock().unwrap().update_rayon(data_slice);
             }),
         };
 
@@ -390,31 +402,24 @@ impl Blake3Class {
     /// Arguments:
     /// - `path` (required): The filepath to read.
     #[pyo3(signature=(path))]
-    fn update_mmap<'this>(
-        mut this: PyRefMut<'this, Self>,
+    fn update_mmap<'py>(
+        this: Bound<'py, Self>,
         py: Python,
         path: PathBuf,
-    ) -> PyResult<PyRefMut<'this, Self>> {
-        let this_mut = &mut *this;
+    ) -> PyResult<Bound<'py, Self>> {
+        let self_ = this.get();
+
         py.detach(|| -> PyResult<()> {
-            match &mut this_mut.threading_mode {
+            match &self_.threading_mode {
                 ThreadingMode::Single => {
-                    this_mut.rust_hasher.lock().unwrap().update_mmap(&path)?;
+                    self_.rust_hasher.lock().unwrap().update_mmap(&path)?;
                 }
                 ThreadingMode::Auto => {
-                    this_mut
-                        .rust_hasher
-                        .lock()
-                        .unwrap()
-                        .update_mmap_rayon(&path)?;
+                    self_.rust_hasher.lock().unwrap().update_mmap_rayon(&path)?;
                 }
                 ThreadingMode::Pool { pool, .. } => {
                     pool.install(|| -> PyResult<()> {
-                        this_mut
-                            .rust_hasher
-                            .lock()
-                            .unwrap()
-                            .update_mmap_rayon(&path)?;
+                        self_.rust_hasher.lock().unwrap().update_mmap_rayon(&path)?;
                         Ok(())
                     })?;
                 }
@@ -441,7 +446,7 @@ impl Blake3Class {
     /// Note that if any input bytes were supplied in the original
     /// construction of the hasher, those bytes are *not* replayed.
     #[pyo3(signature=())]
-    fn reset(&mut self) {
+    fn reset(&self) {
         self.rust_hasher.lock().unwrap().reset();
     }
 
@@ -506,7 +511,7 @@ impl Blake3Class {
 /// (https://github.com/BLAKE3-team/BLAKE3). This module provides a single
 /// class, also called `blake3.` The interface is similar to `hashlib` from
 /// the standard library, which provides `blake2b`, `md5`, etc.
-#[pymodule]
+#[pymodule(gil_used = false)]
 fn blake3(_: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<Blake3Class>()?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
