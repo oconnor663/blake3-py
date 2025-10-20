@@ -24,37 +24,26 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         rust-toolchain: ["1.80", stable, beta, nightly]
         platform: [
-          { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu", name: "ubuntu-x64" },
-          { os: "macos-15-intel", python-architecture: "x64", rust-target: "x86_64-apple-darwin",      name: "macos-x64" },
-          # disabled for now ref https://github.com/actions/setup-python/issues/855#issuecomment-2196137381
-          # { os: "macos-14",       python-architecture: "x64", rust-target: "aarch64-apple-darwin",     name: "macos-arm64" },
-          { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc",     name: "windows-x86" },
-          { os: "windows-latest", python-architecture: "x64", rust-target: "x86_64-pc-windows-msvc",   name: "windows-x64" },
+          { os: "ubuntu-latest",  python-target: "linux-x86_64",   rust-target: "x86_64-unknown-linux-gnu", name: "ubuntu-x64" },
+          { os: "macos-15-intel", python-target: "macos-x86_64",   rust-target: "x86_64-apple-darwin",      name: "macos-x64" },
+          { os: "macos-latest",   python-target: "macos-aarch64",  rust-target: "aarch64-apple-darwin",     name: "macos-arm64" },
+          { os: "windows-latest", python-target: "windows-x86",    rust-target: "i686-pc-windows-msvc",     name: "windows-x86" },
+          { os: "windows-latest", python-target: "windows-x86_64", rust-target: "x86_64-pc-windows-msvc",   name: "windows-x64" },
         ]
       fail-fast: false
     env:
       CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
     steps:
       - uses: actions/checkout@v5
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.platform.python-architecture }}
-      - run: python tests/python_info.py
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@master
+      - uses: astral-sh/setup-uv@v5
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust-toolchain }}
           target: ${{ matrix.platform.rust-target }}
-      # We use numpy to test the error case of trying to hash a strided buffer.
-      - name: Install pytest and numpy
-        run: pip install pytest numpy
-      - name: Build and install the blake3 module
-        run: pip install .
-      - name: Run pytest
+      - run: uv venv --python cpython-${{ matrix.python-version }}-${{ matrix.platform.python-target }}
+      - run: uv run tests/python_info.py
+      - run: uv run pytest --verbose
         if: ${{ matrix.platform.rust-target != 'aarch64-apple-darwin' }}
-        run: python -u -m pytest --verbose
 
   c_impl:
     name: c-impl-${{ matrix.python-version }}-${{ matrix.platform.name }}
@@ -68,44 +57,34 @@ jobs:
         #   - the mypy checks below
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         platform: [
-          # This list should be kept in sync with dists.yml.
-          { os: "ubuntu-latest",  python-architecture: "x64", name: "ubuntu-x64" },
-          { os: "macos-15-intel", python-architecture: "x64", name: "macos-x64" },
-          # disabled for now ref https://github.com/actions/setup-python/issues/855#issuecomment-2196137381
-          # { os: "macos-14",       python-architecture: "x64", name: "macos-arm64" },
-          { os: "windows-latest", python-architecture: "x86", name: "windows-x86" },
-          { os: "windows-latest", python-architecture: "x64", name: "windows-x64" },
+          { os: "ubuntu-latest",  python-target: "linux-x86_64",   name: "ubuntu-x64" },
+          { os: "macos-15-intel", python-target: "macos-x86_64",   name: "macos-x64" },
+          { os: "macos-latest",   python-target: "macos-aarch64",  name: "macos-arm64" },
+          { os: "windows-latest", python-target: "windows-x86",    name: "windows-x86" },
+          { os: "windows-latest", python-target: "windows-x86_64", name: "windows-x64" },
         ]
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.platform.python-architecture }}
-      - run: python tests/python_info.py
-      - run: pip install --upgrade setuptools
+      - uses: astral-sh/setup-uv@v5
+      - run: uv venv --python cpython-${{ matrix.python-version }}-${{ matrix.platform.python-target }}
+      - run: uv run tests/python_info.py
       - name: build the C extension
-        run: python setup.py build
+        run: uv run --with setuptools setup.py build
         working-directory: c_impl
       - run: git clean -dffx
       - name: build the C extension with FORCE_INTRINSICS
-        run: python setup.py build
+        run: uv run --with setuptools setup.py build
         working-directory: c_impl
         env:
           FORCE_INTRINSICS: "1"
       - run: git clean -dffx
       - name: install the C extension
-        run: pip install .
-        working-directory: c_impl
+        run: uv sync --no-install-project && uv pip install ./c_impl
       - name: test import, __version__, __file__
-        run: python -c "import blake3; print(blake3.__version__); print(blake3.__file__)"
-      # We use numpy to test the error case of trying to hash a strided buffer.
-      - name: Install pytest and numpy
-        run: pip install pytest numpy
+        run: uv run --no-sync python -c "import blake3; print(blake3.__version__); print(blake3.__file__)"
       - name: Run pytest
-        run: python -u -m pytest --verbose
+        run: uv run --no-sync pytest --verbose
 
   mypy:
     name: "mypy"
@@ -120,11 +99,6 @@ jobs:
         python-version: ["3.8", "3.14"]
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-      # We use numpy to test the error case of trying to hash a strided buffer.
-      - name: Install pytest, numpy, and mypy
-        run: pip install pytest numpy mypy
+      - uses: astral-sh/setup-uv@v5
       - name: Run mypy
-        run: python -u -m mypy --strict blake3.pyi tests/test_blake3.py
+        run: uv run --python ${{ matrix.python-version }} --with mypy mypy --strict blake3.pyi tests/test_blake3.py

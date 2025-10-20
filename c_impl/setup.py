@@ -1,4 +1,3 @@
-from collections import namedtuple
 from distutils import ccompiler
 import os
 from os import path
