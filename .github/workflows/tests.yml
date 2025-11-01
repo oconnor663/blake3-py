@@ -35,7 +35,7 @@ jobs:
       CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust-toolchain }}
@@ -66,7 +66,7 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       - run: uv venv --python cpython-${{ matrix.python-version }}-${{ matrix.platform.python-target }}
       - run: uv run tests/python_info.py
       - name: build the C extension
@@ -99,6 +99,6 @@ jobs:
         python-version: ["3.8", "3.14"]
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       - name: Run mypy
         run: uv run --python ${{ matrix.python-version }} --with mypy mypy --strict blake3.pyi tests/test_blake3.py
