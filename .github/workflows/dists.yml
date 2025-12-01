@@ -34,7 +34,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     # keep python versions in sync with
     #   - pyproject.toml
@@ -109,7 +109,7 @@ jobs:
     name: sdist
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - uses: PyO3/maturin-action@v1.49.4
       with:
@@ -141,7 +141,7 @@ jobs:
     - run: ls -ltra dist/
 
     - name: Upload release assets
-      uses: softprops/action-gh-release@v2.4.1
+      uses: softprops/action-gh-release@v2.4.2
       with:
         files: dist/*
 
