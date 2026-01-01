@@ -100,7 +100,7 @@ jobs:
 
     - run: ${{ (startsWith(matrix.os, 'windows') && 'dir') || 'ls -ltra' }} dist/
 
-    - uses: actions/upload-artifact@v5
+    - uses: actions/upload-artifact@v6
       with:
         name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.manylinux }}
         path: dist
@@ -117,7 +117,7 @@ jobs:
         args: --out dist
         rust-toolchain: stable
 
-    - uses: actions/upload-artifact@v5
+    - uses: actions/upload-artifact@v6
       with:
         name: dist-sdist
         path: dist
@@ -132,7 +132,7 @@ jobs:
       id-token: write  # pypa/gh-action-pypi-publish
 
     steps:
-    - uses: actions/download-artifact@v6
+    - uses: actions/download-artifact@v7
       with:
         path: dist/
         pattern: dist-*
@@ -141,7 +141,7 @@ jobs:
     - run: ls -ltra dist/
 
     - name: Upload release assets
-      uses: softprops/action-gh-release@v2.4.2
+      uses: softprops/action-gh-release@v2.5.0
       with:
         files: dist/*
 
