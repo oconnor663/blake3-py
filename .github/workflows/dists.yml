@@ -69,7 +69,7 @@ jobs:
         python-version: '3.14'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
 
-    - uses: PyO3/maturin-action@v1.49.4
+    - uses: PyO3/maturin-action@v1.50.1
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
@@ -89,7 +89,7 @@ jobs:
       with:
         python-version: '3.14t'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-    - uses: PyO3/maturin-action@v1.49.4
+    - uses: PyO3/maturin-action@v1.50.1
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
@@ -100,7 +100,7 @@ jobs:
 
     - run: ${{ (startsWith(matrix.os, 'windows') && 'dir') || 'ls -ltra' }} dist/
 
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.manylinux }}
         path: dist
@@ -111,13 +111,13 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
-    - uses: PyO3/maturin-action@v1.49.4
+    - uses: PyO3/maturin-action@v1.50.1
       with:
         command: sdist
         args: --out dist
         rust-toolchain: stable
 
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: dist-sdist
         path: dist
@@ -132,7 +132,7 @@ jobs:
       id-token: write  # pypa/gh-action-pypi-publish
 
     steps:
-    - uses: actions/download-artifact@v7
+    - uses: actions/download-artifact@v8
       with:
         path: dist/
         pattern: dist-*
