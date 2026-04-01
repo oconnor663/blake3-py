@@ -12,3 +12,11 @@ updates:
   directory: /
   schedule:
     interval: monthly
+  # Dependabot always bumps the Cargo.toml version floor even when the existing
+  # constraint already covers the new version. The ideal fix is
+  # versioning-strategy: increase-if-necessary, but that isn't supported for
+  # Cargo yet: https://github.com/dependabot/dependabot-core/issues/4009
+  # Until then, ignore minor/patch bumps — security updates still come through.
+  ignore:
+    - dependency-name: "*"
+      update-types: ["version-update:semver-minor", "version-update:semver-patch"]
