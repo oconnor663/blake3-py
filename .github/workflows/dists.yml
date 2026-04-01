@@ -141,7 +141,7 @@ jobs:
     - run: ls -ltra dist/
 
     - name: Upload release assets
-      uses: softprops/action-gh-release@v2.5.0
+      uses: softprops/action-gh-release@v2.6.1
       with:
         files: dist/*
 
