@@ -72,19 +72,26 @@ assert hasher2.digest() == blake3(b"foobaz").digest()
 
 ## Installation
 
+The `blake3` package is installable from PyPI like most other Python packages.
+For folks using a package manager like [`uv`](https://docs.astral.sh/uv/),
+that's:
+
+```
+uv add blake3
+```
+
+Or the "old school" way:
+
 ```
 pip install blake3
 ```
 
-As usual with Pip, you might need to use `sudo` or the `--user` flag
-with the command above, depending on how you installed Python on your
-system.
-
-There are binary wheels [available on
-PyPI](https://pypi.org/project/blake3/#files) for most environments. But
-if you're building the source distribution, or if a binary wheel isn't
-available for your environment, you'll need to [install the Rust
-toolchain](https://rustup.rs).
+This package uses the Rust implementation of BLAKE3 internally. There are
+binary wheels [available on PyPI](https://pypi.org/project/blake3/#files) for
+most environments, so most users don't need a Rust compiler. But if you're
+building the source distribution, or if a binary wheel isn't available for your
+environment, you'll need to [install the Rust toolchain](https://rustup.rs)
+first.
 
 ## C Bindings
 
