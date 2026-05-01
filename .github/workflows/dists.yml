@@ -70,7 +70,7 @@ jobs:
         python-version: '3.14'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
 
-    - uses: PyO3/maturin-action@v1.50.1
+    - uses: PyO3/maturin-action@v1.51.0
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
@@ -90,7 +90,7 @@ jobs:
       with:
         python-version: '3.14t'
         architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-    - uses: PyO3/maturin-action@v1.50.1
+    - uses: PyO3/maturin-action@v1.51.0
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
@@ -112,7 +112,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
-    - uses: PyO3/maturin-action@v1.50.1
+    - uses: PyO3/maturin-action@v1.51.0
       with:
         command: sdist
         args: --out dist
@@ -142,12 +142,12 @@ jobs:
     - run: ls -ltra dist/
 
     - name: Upload release assets
-      uses: softprops/action-gh-release@v2.6.1
+      uses: softprops/action-gh-release@v3.0.0
       with:
         files: dist/*
 
     # trusted publisher in https://pypi.org/manage/project/blake3/settings/publishing/
     - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.13.0
+      uses: pypa/gh-action-pypi-publish@v1.14.0
       with:
         skip-existing: true
