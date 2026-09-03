@@ -29,7 +29,13 @@ jobs:
           { os: "macos-latest",   python-target: "macos-aarch64",  rust-target: "aarch64-apple-darwin",     name: "macos-arm64" },
           { os: "windows-latest", python-target: "windows-x86",    rust-target: "i686-pc-windows-msvc",     name: "windows-x86" },
           { os: "windows-latest", python-target: "windows-x86_64", rust-target: "x86_64-pc-windows-msvc",   name: "windows-x64" },
+          { os: "windows-11-arm", python-target: "windows-aarch64", rust-target: "aarch64-pc-windows-msvc",  name: "windows-arm64" },
         ]
+        # Windows ARM64 CPython is available starting with Python 3.11.
+        exclude:
+          - { python-version: "3.8",  platform: { os: "windows-11-arm", python-target: "windows-aarch64", rust-target: "aarch64-pc-windows-msvc", name: "windows-arm64" } }
+          - { python-version: "3.9",  platform: { os: "windows-11-arm", python-target: "windows-aarch64", rust-target: "aarch64-pc-windows-msvc", name: "windows-arm64" } }
+          - { python-version: "3.10", platform: { os: "windows-11-arm", python-target: "windows-aarch64", rust-target: "aarch64-pc-windows-msvc", name: "windows-arm64" } }
       fail-fast: false
     env:
       CARGO_BUILD_TARGET: ${{ matrix.platform.rust-target }}
@@ -62,7 +68,13 @@ jobs:
           { os: "macos-latest",   python-target: "macos-aarch64",  name: "macos-arm64" },
           { os: "windows-latest", python-target: "windows-x86",    name: "windows-x86" },
           { os: "windows-latest", python-target: "windows-x86_64", name: "windows-x64" },
+          { os: "windows-11-arm", python-target: "windows-aarch64", name: "windows-arm64" },
         ]
+        # Windows ARM64 CPython is available starting with Python 3.11.
+        exclude:
+          - { python-version: "3.8",  platform: { os: "windows-11-arm", python-target: "windows-aarch64", name: "windows-arm64" } }
+          - { python-version: "3.9",  platform: { os: "windows-11-arm", python-target: "windows-aarch64", name: "windows-arm64" } }
+          - { python-version: "3.10", platform: { os: "windows-11-arm", python-target: "windows-aarch64", name: "windows-arm64" } }
       fail-fast: false
     steps:
       - uses: actions/checkout@v7
