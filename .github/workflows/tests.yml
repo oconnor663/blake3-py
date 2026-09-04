@@ -86,6 +86,45 @@ jobs:
       - name: Run pytest
         run: uv run --no-sync pytest --verbose
 
+  msys2_mingw:
+    name: msys2-mingw-${{ matrix.msystem }}
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    strategy:
+      matrix:
+        include:
+          - msystem: UCRT64
+          - msystem: MINGW64
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v6
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          install: >-
+            git
+          pacboy: >-
+            gcc:p
+            python:p
+            python-pip:p
+            python-maturin:p
+            rust:p
+      - run: python tests/python_info.py
+      - name: Show native toolchain versions
+        run: |
+          rustc --version
+          cargo --version
+          gcc --version
+          python -m pip --version
+          maturin --version
+      - name: Build and install from source
+        run: python -m pip install --no-build-isolation --no-deps --verbose .
+      - name: Test import, __version__, __file__
+        run: python -c "import blake3; print(blake3.__version__); print(blake3.__file__)"
+
   cargo_lock:
     name: cargo-lock
     runs-on: ubuntu-latest
