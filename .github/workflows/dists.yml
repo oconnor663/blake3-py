@@ -43,9 +43,11 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
-    # maturin doesn't need interpreters installed: on Linux it uses the ones
-    # inside the manylinux container, and everywhere else it uses its own
-    # bundled sysconfig data plus the import libs that pyo3 generates.
+    # No setup-python needed. To compile an extension module maturin only needs
+    # metadata about the target python (version, abi flags, file suffix), which
+    # it ships as a lookup table, and on Windows an import lib listing the
+    # symbols in pythonXY.dll, which pyo3 >=0.29 generates itself. On Linux the
+    # build runs inside the manylinux container, which has real interpreters.
     - uses: PyO3/maturin-action@v1.51.0
       with:
         target: ${{ matrix.target }}
