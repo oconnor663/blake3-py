@@ -60,6 +60,7 @@ jobs:
           uv python install "cpython-$version-${{ matrix.python-target }}"
           interpreters="$interpreters python$version"
         done
+        uv python dir --bin >> "$GITHUB_PATH"
         echo "PYTHON_INTERPRETERS=$interpreters" >> "$GITHUB_ENV"
 
     - uses: PyO3/maturin-action@v1.51.0
