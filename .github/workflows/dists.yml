@@ -30,46 +30,25 @@ jobs:
         - { os: ubuntu-24.04,   target: riscv64, manylinux: auto}
         - { os: ubuntu-24.04,   target: x86_64,  manylinux: musllinux_1_1 }
         - { os: ubuntu-24.04,   target: aarch64, manylinux: musllinux_1_1 }
-        - { os: windows-2025,   target: x86_64,  manylinux: auto, python-target: windows-x86_64}
-        - { os: windows-2025,   target: i686,    manylinux: auto, python-target: windows-x86}
-        - { os: windows-11-arm, target: aarch64, manylinux: auto, python-target: windows-aarch64}
+        - { os: windows-2025,   target: x86_64,  manylinux: auto}
+        - { os: windows-2025,   target: i686,    manylinux: auto}
+        - { os: windows-11-arm, target: aarch64, manylinux: auto}
 
     runs-on: ${{ matrix.os }}
-    env:
-      # keep python versions in sync with
-      #   - pyproject.toml
-      #   - tests.yml
-      PYTHON_VERSIONS: 3.11 3.12 3.13 3.14 3.15 3.14t 3.15t
     steps:
     - uses: actions/checkout@v7
 
-    # Only Windows needs real interpreters, to link against pythonXY.lib. On
-    # Linux maturin uses the ones inside the manylinux container, and on macOS
-    # it uses its own bundled sysconfig data.
-    - uses: astral-sh/setup-uv@v7
-      if: runner.os == 'Windows'
-    - name: install the interpreters to link against
-      if: runner.os == 'Windows'
-      shell: bash
-      env:
-        UV_PYTHON_BIN_DIR: ${{ runner.temp }}/python-bin
-      # uv installs these as e.g. both python3.14.exe and python3.14t.exe, so
-      # unlike setup-python it doesn't confuse maturin about which is which.
-      # See https://github.com/oconnor663/blake3-py/issues/52.
-      run: |
-        interpreters=""
-        for version in $PYTHON_VERSIONS; do
-          uv python install "cpython-$version-${{ matrix.python-target }}"
-          interpreters="$interpreters python$version"
-        done
-        echo "$UV_PYTHON_BIN_DIR" >> "$GITHUB_PATH"
-        echo "PYTHON_INTERPRETERS=$interpreters" >> "$GITHUB_ENV"
-
+    # maturin doesn't need interpreters installed: on Linux it uses the ones
+    # inside the manylinux container, and everywhere else it uses its own
+    # bundled sysconfig data plus the import libs that pyo3 generates.
     - uses: PyO3/maturin-action@v1.51.0
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
-        args: --release --out dist --interpreter ${{ env.PYTHON_INTERPRETERS || env.PYTHON_VERSIONS }}
+        # keep python versions in sync with
+        #   - pyproject.toml
+        #   - tests.yml
+        args: --release --out dist --interpreter 3.11 3.12 3.13 3.14 3.15 3.14t 3.15t
         rust-toolchain: stable
         docker-options: -e CI
 
