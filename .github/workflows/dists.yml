@@ -35,6 +35,11 @@ jobs:
         - { os: windows-11-arm, target: aarch64, manylinux: auto}
 
     runs-on: ${{ matrix.os }}
+    env:
+      # keep python versions in sync with
+      #   - pyproject.toml
+      #   - tests.yml
+      PYTHON_VERSIONS: 3.11 3.12 3.13 3.14 3.15 3.14t 3.15t
     steps:
     - uses: actions/checkout@v7
 
@@ -45,14 +50,18 @@ jobs:
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
-        # keep python versions in sync with
-        #   - pyproject.toml
-        #   - tests.yml
-        args: --release --out dist --interpreter 3.11 3.12 3.13 3.14 3.15 3.14t 3.15t
+        args: --release --out dist --interpreter ${{ env.PYTHON_VERSIONS }}
         rust-toolchain: stable
         docker-options: -e CI
 
-    - run: ${{ (runner.os == 'Windows' && 'dir') || 'ls -ltra' }} dist/
+    # One wheel per interpreter, otherwise we silently ship an incomplete set.
+    # See https://github.com/oconnor663/blake3-py/issues/52.
+    - shell: bash
+      run: |
+        ls -ltra dist/
+        expected=$(wc -w <<< "$PYTHON_VERSIONS")
+        built=$(find dist -name '*.whl' | wc -l)
+        test "$built" -eq "$expected" || { echo "::error::built $built wheels, expected $expected"; exit 1; }
 
     - uses: actions/upload-artifact@v7
       with:
