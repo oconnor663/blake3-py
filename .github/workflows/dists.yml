@@ -56,9 +56,10 @@ jobs:
         rust-toolchain: stable
         docker-options: -e CI
 
-    # One wheel per interpreter, otherwise we silently ship an incomplete set.
+    # Otherwise we silently ship an incomplete set.
     # See https://github.com/oconnor663/blake3-py/issues/52.
-    - shell: bash
+    - name: check that we built one wheel per interpreter
+      shell: bash
       run: |
         ls -ltra dist/
         expected=$(wc -w <<< "$PYTHON_VERSIONS")
