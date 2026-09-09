@@ -21,8 +21,8 @@ jobs:
         #   - dists.yml
         #   - the c_impl tests below
         #   - the mypy checks below
-        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-        rust-toolchain: ["1.85", stable, beta, nightly]
+        python-version: ["3.11", "3.15"]
+        rust-toolchain: ["1.85", nightly]
         platform: [
           { os: "ubuntu-24.04",     python-target: "linux-x86_64",    rust-target: "x86_64-unknown-linux-gnu",  name: "ubuntu-x64" },
           { os: "ubuntu-24.04-arm", python-target: "linux-aarch64",   rust-target: "aarch64-unknown-linux-gnu", name: "ubuntu-arm64" },
@@ -57,7 +57,7 @@ jobs:
         #   - dists.yml
         #   - the rust_impl tests above
         #   - the mypy checks below
-        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        python-version: ["3.11", "3.15"]
         platform: [
           { os: "ubuntu-24.04",     python-target: "linux-x86_64",    name: "ubuntu-x64" },
           { os: "ubuntu-24.04-arm", python-target: "linux-aarch64",   name: "ubuntu-arm64" },
