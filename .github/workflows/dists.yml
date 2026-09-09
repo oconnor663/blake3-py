@@ -51,8 +51,10 @@ jobs:
     - name: install the interpreters to link against
       if: runner.os == 'Windows'
       shell: bash
-      # uv installs these on PATH as e.g. both python3.14.exe and python3.14t.exe,
-      # so unlike setup-python it doesn't confuse maturin about which is which.
+      env:
+        UV_PYTHON_BIN_DIR: ${{ runner.temp }}/python-bin
+      # uv installs these as e.g. both python3.14.exe and python3.14t.exe, so
+      # unlike setup-python it doesn't confuse maturin about which is which.
       # See https://github.com/oconnor663/blake3-py/issues/52.
       run: |
         interpreters=""
@@ -60,7 +62,7 @@ jobs:
           uv python install "cpython-$version-${{ matrix.python-target }}"
           interpreters="$interpreters python$version"
         done
-        uv python dir --bin >> "$GITHUB_PATH"
+        echo "$UV_PYTHON_BIN_DIR" >> "$GITHUB_PATH"
         echo "PYTHON_INTERPRETERS=$interpreters" >> "$GITHUB_ENV"
 
     - uses: PyO3/maturin-action@v1.51.0
