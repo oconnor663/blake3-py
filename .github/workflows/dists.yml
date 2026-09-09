@@ -19,83 +19,58 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - { os: macos-15,     target: x86_64,  manylinux: auto}
-        - { os: macos-15,     target: aarch64, manylinux: auto}
-        - { os: ubuntu-24.04, target: x86_64,  manylinux: auto}
-        - { os: ubuntu-24.04, target: aarch64, manylinux: auto}
-        - { os: ubuntu-24.04, target: i686,    manylinux: auto}
-        - { os: ubuntu-24.04, target: armv7,   manylinux: auto}
-        - { os: ubuntu-24.04, target: ppc64le, manylinux: auto}
-        - { os: ubuntu-24.04, target: s390x,   manylinux: auto}
-        - { os: ubuntu-24.04, target: riscv64, manylinux: auto}
-        - { os: ubuntu-24.04, target: x86_64,  manylinux: musllinux_1_1 }
-        - { os: ubuntu-24.04, target: aarch64, manylinux: musllinux_1_1 }
-        - { os: windows-2025, target: x86_64,  manylinux: auto}
-        - { os: windows-2025, target: i686,    manylinux: auto}
+        - { os: macos-15,       target: x86_64,  manylinux: auto}
+        - { os: macos-15,       target: aarch64, manylinux: auto}
+        - { os: ubuntu-24.04,   target: x86_64,  manylinux: auto}
+        - { os: ubuntu-24.04,   target: aarch64, manylinux: auto}
+        - { os: ubuntu-24.04,   target: i686,    manylinux: auto}
+        - { os: ubuntu-24.04,   target: armv7,   manylinux: auto}
+        - { os: ubuntu-24.04,   target: ppc64le, manylinux: auto}
+        - { os: ubuntu-24.04,   target: s390x,   manylinux: auto}
+        - { os: ubuntu-24.04,   target: riscv64, manylinux: auto}
+        - { os: ubuntu-24.04,   target: x86_64,  manylinux: musllinux_1_1 }
+        - { os: ubuntu-24.04,   target: aarch64, manylinux: musllinux_1_1 }
+        - { os: windows-2025,   target: x86_64,  manylinux: auto, python-target: windows-x86_64}
+        - { os: windows-2025,   target: i686,    manylinux: auto, python-target: windows-x86}
+        - { os: windows-11-arm, target: aarch64, manylinux: auto, python-target: windows-aarch64}
 
     runs-on: ${{ matrix.os }}
+    env:
+      # keep python versions in sync with
+      #   - pyproject.toml
+      #   - tests.yml
+      PYTHON_VERSIONS: 3.11 3.12 3.13 3.14 3.15 3.14t 3.15t
     steps:
     - uses: actions/checkout@v7
 
-    # keep python versions in sync with
-    #   - pyproject.toml
-    #   - tests.yml
-    # all python versions need to be present for linking to succeed
-    - uses: actions/setup-python@v7
-      with:
-        python-version: '3.8'
-        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-    - uses: actions/setup-python@v7
-      with:
-        python-version: '3.9'
-        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-    - uses: actions/setup-python@v7
-      with:
-        python-version: '3.10'
-        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-    - uses: actions/setup-python@v7
-      with:
-        python-version: '3.11'
-        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-    - uses: actions/setup-python@v7
-      with:
-        python-version: '3.12'
-        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-    - uses: actions/setup-python@v7
-      with:
-        python-version: '3.13'
-        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-    - uses: actions/setup-python@v7
-      with:
-        python-version: '3.14'
-        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
+    # Only Windows needs real interpreters, to link against pythonXY.lib. On
+    # Linux maturin uses the ones inside the manylinux container, and on macOS
+    # it uses its own bundled sysconfig data.
+    - uses: astral-sh/setup-uv@v7
+      if: runner.os == 'Windows'
+    - name: install the interpreters to link against
+      if: runner.os == 'Windows'
+      shell: bash
+      # uv installs these on PATH as e.g. both python3.14.exe and python3.14t.exe,
+      # so unlike setup-python it doesn't confuse maturin about which is which.
+      # See https://github.com/oconnor663/blake3-py/issues/52.
+      run: |
+        interpreters=""
+        for version in $PYTHON_VERSIONS; do
+          uv python install "cpython-$version-${{ matrix.python-target }}"
+          interpreters="$interpreters python$version"
+        done
+        echo "PYTHON_INTERPRETERS=$interpreters" >> "$GITHUB_ENV"
 
     - uses: PyO3/maturin-action@v1.51.0
       with:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
-        # keep python versions in sync with tests.yml
-        args: --release --out dist --interpreter '3.8 3.9 3.10 3.11 3.12 3.13 3.14'
+        args: --release --out dist --interpreter ${{ env.PYTHON_INTERPRETERS || env.PYTHON_VERSIONS }}
         rust-toolchain: stable
         docker-options: -e CI
 
-    # The freethreaded builds are separated out because of a setup-python issue
-    # on Windows causing maturin-action to pick up e.g. the 3.14t exe instead
-    # of the 3.14 exe. See https://github.com/oconnor663/blake3-py/issues/52.
-    - uses: actions/setup-python@v7
-      with:
-        python-version: '3.14t'
-        architecture: ${{ ( startsWith(matrix.os, 'windows') && matrix.target == 'i686' ) && 'x86' || null }}
-    - uses: PyO3/maturin-action@v1.51.0
-      with:
-        target: ${{ matrix.target }}
-        manylinux: ${{ matrix.manylinux }}
-        # keep python versions in sync with tests.yml
-        args: --release --out dist --interpreter '3.14t'
-        rust-toolchain: stable
-        docker-options: -e CI
-
-    - run: ${{ (startsWith(matrix.os, 'windows') && 'dir') || 'ls -ltra' }} dist/
+    - run: ${{ (runner.os == 'Windows' && 'dir') || 'ls -ltra' }} dist/
 
     - uses: actions/upload-artifact@v7
       with:
