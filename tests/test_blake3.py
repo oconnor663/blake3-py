@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from threading import Thread
 from typing import (
     Any,
     Dict,
@@ -467,3 +468,33 @@ def test_mmap() -> None:
         assert False, "expected a file not found error"
     except FileNotFoundError:
         pass
+
+
+def test_reentrancy_deadlock() -> None:
+    """
+    Test that https://github.com/oconnor663/blake3-py/issues/120 is fixed. In
+    that original issue, we acquired a Mutex inside the Rayon thread pool. That
+    could lead to a deadlock if the thread holding the Mutex ends up waiting on
+    another worker and trying to pick up other work in the meantime. This is a
+    known Rayon footgun, see https://github.com/rayon-rs/rayon/issues/592.
+    """
+
+    # `len` needs to be enough for at least one Rayon split on all platforms
+    # (32 KiB), but making it longer makes the deadlock more likely. Even so,
+    # it's not guaranteed.
+    LEN = 1 << 20
+    ITERATIONS = 50
+
+    data = bytes(LEN)
+    hasher = blake3(max_threads=2)
+
+    def work() -> None:
+        for _ in range(ITERATIONS):
+            hasher.update(data)
+
+    t1 = Thread(target=work)
+    t2 = Thread(target=work)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()

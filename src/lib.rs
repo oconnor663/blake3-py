@@ -371,16 +371,24 @@ impl Blake3Class {
         let data_buf = BytesPyBuffer::get(data)?;
         let data_slice: &[u8] = unsafe { data_buf.as_bytes()? };
 
-        let update_closure = || match &self_.threading_mode {
-            ThreadingMode::Single => {
-                self_.rust_hasher.lock().unwrap().update(data_slice);
+        let update_closure = || {
+            let mut hasher_guard = self_.rust_hasher.lock().unwrap();
+            // The guard itself isn't `Send`, but `&mut Hasher` is.
+            let hasher = &mut *hasher_guard;
+            match &self_.threading_mode {
+                ThreadingMode::Single => {
+                    hasher.update(data_slice);
+                }
+                ThreadingMode::Auto => {
+                    hasher.update_rayon(data_slice);
+                }
+                // XXX: It's important for correctness that we called `rust_hasher.lock()` above
+                // and not within this installed closure. Doing a Rayon split/join while holding a
+                // Mutex is risky if any other Rayon jobs can acquire that Mutex.
+                ThreadingMode::Pool { pool, .. } => pool.install(|| {
+                    hasher.update_rayon(data_slice);
+                }),
             }
-            ThreadingMode::Auto => {
-                self_.rust_hasher.lock().unwrap().update_rayon(data_slice);
-            }
-            ThreadingMode::Pool { pool, .. } => pool.install(|| {
-                self_.rust_hasher.lock().unwrap().update_rayon(data_slice);
-            }),
         };
 
         if data_slice.len() >= GIL_MINSIZE {
