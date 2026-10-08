@@ -5,9 +5,10 @@ and upload build artifacts to GitHub and PyPI. This is triggered when a new tag
 is pushed. To do a release:
 
 1. Bump the version number in `Cargo.toml`.
-2. Make a release commit.
-3. Push `master` and make sure GitHub CI is green.
-4. Create a new GitHub Release pointing to `master`.
+2. Run `cargo update --workspace` to update `Cargo.lock`.
+3. Make a release commit.
+4. Push `master` and make sure GitHub CI is green.
+5. Create a new GitHub Release pointing to `master`.
 
 The rest is automatic. For more details, see `dists.yml`.
 
