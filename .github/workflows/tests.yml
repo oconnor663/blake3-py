@@ -21,14 +21,16 @@ jobs:
         #   - dists.yml
         #   - the c_impl tests below
         #   - the mypy checks below
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
-        rust-toolchain: ["1.85", stable, beta, nightly]
+        python-version: ["3.11", "3.15"]
+        rust-toolchain: ["1.85", stable, nightly]
         platform: [
-          { os: "ubuntu-latest",  python-target: "linux-x86_64",   rust-target: "x86_64-unknown-linux-gnu", name: "ubuntu-x64" },
-          { os: "macos-15-intel", python-target: "macos-x86_64",   rust-target: "x86_64-apple-darwin",      name: "macos-x64" },
-          { os: "macos-latest",   python-target: "macos-aarch64",  rust-target: "aarch64-apple-darwin",     name: "macos-arm64" },
-          { os: "windows-latest", python-target: "windows-x86",    rust-target: "i686-pc-windows-msvc",     name: "windows-x86" },
-          { os: "windows-latest", python-target: "windows-x86_64", rust-target: "x86_64-pc-windows-msvc",   name: "windows-x64" },
+          { os: "ubuntu-24.04",     python-target: "linux-x86_64",    rust-target: "x86_64-unknown-linux-gnu",  name: "ubuntu-x64" },
+          { os: "ubuntu-24.04-arm", python-target: "linux-aarch64",   rust-target: "aarch64-unknown-linux-gnu", name: "ubuntu-arm64" },
+          { os: "macos-15-intel",   python-target: "macos-x86_64",    rust-target: "x86_64-apple-darwin",       name: "macos-x64" },
+          { os: "macos-15",         python-target: "macos-aarch64",   rust-target: "aarch64-apple-darwin",      name: "macos-arm64" },
+          { os: "windows-2025",     python-target: "windows-x86",     rust-target: "i686-pc-windows-msvc",      name: "windows-x86" },
+          { os: "windows-2025",     python-target: "windows-x86_64",  rust-target: "x86_64-pc-windows-msvc",    name: "windows-x64" },
+          { os: "windows-11-arm",   python-target: "windows-aarch64", rust-target: "aarch64-pc-windows-msvc",   name: "windows-arm64" },
         ]
       fail-fast: false
     env:
@@ -55,13 +57,15 @@ jobs:
         #   - dists.yml
         #   - the rust_impl tests above
         #   - the mypy checks below
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.15"]
         platform: [
-          { os: "ubuntu-latest",  python-target: "linux-x86_64",   name: "ubuntu-x64" },
-          { os: "macos-15-intel", python-target: "macos-x86_64",   name: "macos-x64" },
-          { os: "macos-latest",   python-target: "macos-aarch64",  name: "macos-arm64" },
-          { os: "windows-latest", python-target: "windows-x86",    name: "windows-x86" },
-          { os: "windows-latest", python-target: "windows-x86_64", name: "windows-x64" },
+          { os: "ubuntu-24.04",     python-target: "linux-x86_64",    name: "ubuntu-x64" },
+          { os: "ubuntu-24.04-arm", python-target: "linux-aarch64",   name: "ubuntu-arm64" },
+          { os: "macos-15-intel",   python-target: "macos-x86_64",    name: "macos-x64" },
+          { os: "macos-15",         python-target: "macos-aarch64",   name: "macos-arm64" },
+          { os: "windows-2025",     python-target: "windows-x86",     name: "windows-x86" },
+          { os: "windows-2025",     python-target: "windows-x86_64",  name: "windows-x64" },
+          { os: "windows-11-arm",   python-target: "windows-aarch64", name: "windows-arm64" },
         ]
       fail-fast: false
     steps:
@@ -88,7 +92,7 @@ jobs:
 
   cargo_lock:
     name: cargo-lock
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -96,7 +100,7 @@ jobs:
 
   mypy:
     name: "mypy"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         # Keep in sync with:
@@ -104,7 +108,7 @@ jobs:
         #   - dists.yml
         #   - the rust_impl tests above
         #   - the c_impl tests above
-        python-version: ["3.8", "3.14"]
+        python-version: ["3.11", "3.15"]
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
