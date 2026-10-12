@@ -95,7 +95,8 @@ jobs:
 
     permissions:
       contents: write  # softprops/action-gh-release
-      id-token: write  # pypa/gh-action-pypi-publish
+      id-token: write  # pypa/gh-action-pypi-publish, actions/attest-build-provenance
+      attestations: write  # actions/attest-build-provenance
 
     steps:
     - uses: actions/download-artifact@v8
@@ -105,6 +106,11 @@ jobs:
         merge-multiple: true
 
     - run: ls -ltra dist/
+
+    # verify with `gh attestation verify <file> -R oconnor663/blake3-py`
+    - uses: actions/attest-build-provenance@v4.2.2
+      with:
+        subject-path: dist/*
 
     - name: Upload release assets
       uses: softprops/action-gh-release@v3.0.3
