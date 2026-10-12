@@ -122,3 +122,18 @@ jobs:
       uses: pypa/gh-action-pypi-publish@v1.14.2
       with:
         skip-existing: true
+
+  comment:
+    needs: [publish]
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read  # apexskier/github-release-commenter
+      issues: write  # apexskier/github-release-commenter
+      pull-requests: write  # apexskier/github-release-commenter
+
+    steps:
+    - uses: apexskier/github-release-commenter@v1.4.1
+      with:
+        comment-template: |
+          Released {release_link}
