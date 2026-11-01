@@ -119,7 +119,7 @@ jobs:
 
     # trusted publisher in https://pypi.org/manage/project/blake3/settings/publishing/
     - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.14.2
+      uses: pypa/gh-action-pypi-publish@v1.14.3
       with:
         skip-existing: true
 
